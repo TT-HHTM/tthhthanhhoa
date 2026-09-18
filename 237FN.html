@@ -121,6 +121,14 @@
             background-color: #388e3c;
         }
 
+        .btn-sheet {
+            background-color: #0f9d58;
+            margin-bottom: 8px;
+        }
+        .btn-sheet:hover {
+            background-color: #0b8043;
+        }
+
         .btn-info {
             background-color: #0288d1;
             margin-bottom: 8px;
@@ -411,9 +419,9 @@
             <div class="card">
                 <h3>Quản Lý Dữ Liệu</h3>
                 <button class="btn-success" onclick="exportToExcel()">📊 Xuất Excel</button>
+                <button class="btn-sheet" onclick="exportToGoogleSheet()">☁️ Xuất Google Sheets</button>
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="importFromExcel(event)">
                 <button class="btn-info" onclick="document.getElementById('excelFileInput').click()">📥 Nhập File Excel</button>
-                <button class="btn-info" id="btnSyncApi" style="background-color: #673ab7; margin-bottom: 8px;" onclick="syncWithApi()">🔄 Tải/Đồng Bộ API Server</button>
                 <button class="btn-clear-all" onclick="clearAllData()">🗑️ Xóa Tất Cả Dữ Liệu Kho</button>
             </div>
 
@@ -516,11 +524,6 @@
     </div>
 
     <script>
-        // ==========================================
-        // CẤU HÌNH API GOOGLE APP SCRIPT
-        // ==========================================
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzFwWhwnhP6wqqsms8NpxPzXsq5idM6bIaSAe4QQbZl3ls5vyNNd3hF8L4PD7zhF5SW8w/exec';
-
         const totalNgan = 12;
         const totalRows = 4;
         let inventory = JSON.parse(localStorage.getItem('blood_inventory_v5')) || {};
@@ -987,6 +990,53 @@
             }, 300);
         }
 
+        // Hàm xuất dữ liệu trực tiếp sang Google Sheets
+        function exportToGoogleSheet() {
+            const webAppUrl = "https://script.google.com/macros/s/AKfycby97FL5Z6LzP0reE-lmEYVFsi2bZAvxsaDiDbfT2wPMDnsyAAzEvOU9Oe1L3-N66qqwZw/exec";
+            let exportData = [];
+            let sttTong = 1;
+
+            for (let n = 1; n <= totalNgan; n++) {
+                for (let r = 1; r <= totalRows; r++) {
+                    const rowData = inventory[n].rows[r];
+                    rowData.items.forEach((item, index) => {
+                        exportData.push({
+                            "STT": sttTong++,
+                            "Ngan": `NGĂN ${n}`,
+                            "HangKhay": `HÀNG ${r}`,
+                            "STTTrongKhay": index + 1,
+                            "BarcodeKhay": rowData.barcodeKhay || 'Trống',
+                            "BarcodeTui": item.barcode,
+                            "NhomMau": item.nhom,
+                            "Rh": item.rh,
+                            "DungTich": item.dungTich,
+                            "NgayNhap": item.ngayNhap ? formatDateToDisplay(item.ngayNhap) : '',
+                            "HanSuDung": item.hanSuDung ? formatDateToDisplay(item.hanSuDung) : (item.ngayNhap ? formatDateToDisplay(addDaysToDate(item.ngayNhap, 42)) : '')
+                        });
+                    });
+                }
+            }
+
+            if (exportData.length === 0) {
+                alert("Kho máu hiện tại đang trống, không có dữ liệu để xuất!");
+                return;
+            }
+
+            fetch(webAppUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(exportData)
+            })
+            .then(() => {
+                alert("✅ Đã gửi dữ liệu thành công sang Google Trang Tính!");
+            })
+            .catch(error => {
+                console.error('Lỗi khi gửi dữ liệu:', error);
+                alert("❌ Đã có lỗi xảy ra khi truyền dữ liệu sang Google Trang Tính.");
+            });
+        }
+
         function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1074,93 +1124,6 @@
             };
 
             reader.readAsArrayBuffer(file);
-        }
-
-        // ==========================================
-        // ĐỒNG BỘ VÀ TẢI DỮ LIỆU TỪ API WEB APP (ĐÃ SỬA LỖI)
-        // ==========================================
-        async function syncWithApi() {
-            if (!API_URL || API_URL === 'YOUR_WEB_APP_URL_HERE') {
-                alert('Vui lòng cấu hình URL Web App hợp lệ trong biến API_URL.');
-                return;
-            }
-
-            const btnSync = document.getElementById('btnSyncApi');
-            const originalText = btnSync.textContent;
-            btnSync.disabled = true;
-            btnSync.textContent = '⏳ Đang tải...';
-
-            try {
-                // Thêm tùy chọn redirect: 'follow' để hỗ trợ Google Apps Script
-                const response = await fetch(API_URL, {
-                    method: 'GET',
-                    redirect: 'follow'
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Mã lỗi HTTP: ${response.status} (${response.statusText})`);
-                }
-
-                const result = await response.json();
-
-                if (result.status === 'success' && Array.isArray(result.data)) {
-                    initInventory();
-                    let count = 0;
-
-                    result.data.forEach(row => {
-                        const nganText = String(row["Ngăn"] || "").trim();
-                        const hangText = String(row["Hàng Khay"] || "").trim();
-                        const barcodeKhay = String(row["Barcode Khay"] || "").trim();
-                        const barcodeTui = String(row["Barcode Túi Máu"] || "").trim();
-                        const nhomMau = String(row["Nhóm Máu"] || "O").trim();
-                        const rhFactor = String(row["Rh"] || "Rh+").trim();
-                        const dungTich = String(row["Thể Tích (ml)"] || "250").trim();
-                        let ngayNhap = String(row["Ngày Nhập"] || "").trim();
-                        let hanSuDung = String(row["Hạn Sử Dụng"] || "").trim();
-
-                        if (ngayNhap && ngayNhap.includes('/')) {
-                            const p = ngayNhap.split('/');
-                            if (p.length === 3) ngayNhap = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-                        }
-                        if (hanSuDung && hanSuDung.includes('/')) {
-                            const p = hanSuDung.split('/');
-                            if (p.length === 3) hanSuDung = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-                        }
-
-                        const nganMatch = nganText.match(/\d+/);
-                        const hangMatch = hangText.match(/\d+/);
-
-                        if (nganMatch && hangMatch && barcodeTui) {
-                            const nganId = parseInt(nganMatch[0], 10);
-                            const hangId = parseInt(hangMatch[0], 10);
-
-                            if (inventory[nganId] && inventory[nganId].rows[hangId]) {
-                                inventory[nganId].rows[hangId].barcodeKhay = barcodeKhay;
-                                inventory[nganId].rows[hangId].items.push({
-                                    barcode: barcodeTui,
-                                    nhom: nhomMau,
-                                    rh: rhFactor,
-                                    dungTich: dungTich,
-                                    ngayNhap: ngayNhap,
-                                    hanSuDung: hanSuDung
-                                });
-                                count++;
-                            }
-                        }
-                    });
-
-                    renderView();
-                    alert(`✅ Đồng bộ thành công ${count} túi máu từ API!`);
-                } else {
-                    alert('Lấy dữ liệu từ API không thành công hoặc cấu trúc JSON không đúng!');
-                }
-            } catch (error) {
-                console.error('Lỗi API chi tiết:', error);
-                alert(`❌ Lỗi kết nối tới API!\nChi tiết: ${error.message}\n\nHướng dẫn khắc phục:\n1. Kiểm tra lại việc cấp quyền "Anyone" (Bất kỳ ai) khi Deploy Web App trên Google Sheet.\n2. Mở F12 chọn tab Console để xem nguyên nhân chi tiết.`);
-            } finally {
-                btnSync.disabled = false;
-                btnSync.textContent = originalText;
-            }
         }
 
         function searchBloodBag() {
