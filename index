@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý Kho Tủ Lạnh Chứa Máu</title>
+    <style>
+        :root {
+            --primary-color: #b71c1c;
+            --hover-color: #d32f2f;
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-top: 6px solid var(--primary-color);
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 25px rgba(183, 28, 28, 0.15);
+        }
+
+        .card-icon {
+            font-size: 3.2rem;
+            margin-bottom: 15px;
+        }
+
+        .card h2 {
+            color: #222;
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+        }
+
+        .card p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: var(--hover-color);
+        }
+
+        footer {
+            margin-top: 50px;
+            color: #888;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Hệ Thống Quản Lý Kho Máu</h1>
+        <p>Vui lòng chọn hệ thống tủ lạnh cần quản lý</p>
+    </div>
+
+    <div class="grid-container">
+        <!-- Tủ TTB237 (Cũ) -->
+        <div class="card">
+            <div>
+                <div class="card-icon">❄️</div>
+                <h2>Tủ Lạnh 36-TTB237</h2>
+                <p>Hệ thống quản lý quy mô lớn gồm <b>12 ngăn chứa</b> (6 ngăn bên trái, 6 ngăn bên phải), hỗ trợ lưu trữ nhiều hàng khay.</p>
+            </div>
+            <a href="237FN.html" class="btn">Truy Cập Tủ 36-TTB237 &rarr;</a>
+        </div>
+
+        <!-- Tủ TTB25 (Cũ) -->
+        <div class="card">
+            <div>
+                <div class="card-icon">🧊</div>
+                <h2>Tủ Lạnh 36-TTB25</h2>
+                <p>Hệ thống quản lý quy mô vừa gồm <b>6 ngăn chứa</b> (cột bên trái), giao diện tối ưu hóa cho quản lý tiêu chuẩn.</p>
+            </div>
+            <a href="25FN.html" class="btn">Truy Cập Tủ 36-TTB25 &rarr;</a>
+        </div>
+
+        <!-- Tủ TTB23 (Mới) -->
+        <div class="card">
+            <div>
+                <div class="card-icon">🌡️</div>
+                <h2>Tủ Lạnh 36-TTB23</h2>
+                <p>Hệ thống phần mềm quản lý kho thô gồm <b>6 ngăn chứa</b> với 4 hàng khay mỗi ngăn.</p>
+            </div>
+            <a href="23FN.html" class="btn">Truy Cập Tủ 36-TTB23 &rarr;</a>
+        </div>
+
+        <!-- Tủ TTB236 (Mới) -->
+        <div class="card">
+            <div>
+                <div class="card-icon">❄️</div>
+                <h2>Tủ Lạnh 36-TTB236</h2>
+                <p>Hệ thống phần mềm quản lý kho thô gồm <b>12 ngăn chứa</b> (6 trái, 6 phải) với 3 hàng khay mỗi ngăn.</p>
+            </div>
+            <a href="236FN.html" class="btn">Truy Cập Tủ 36-TTB236 &rarr;</a>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; Hệ Thống Phần Mềm Quản Lý Kho Thô - Trung Tâm Máu</p>
+    </footer>
+
+</body>
+</html>
