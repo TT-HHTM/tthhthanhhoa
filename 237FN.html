@@ -992,7 +992,8 @@
 
         // Hàm xuất dữ liệu trực tiếp sang Google Sheets
         function exportToGoogleSheet() {
-            const webAppUrl = "https://script.google.com/macros/s/AKfycby97FL5Z6LzP0reE-lmEYVFsi2bZAvxsaDiDbfT2wPMDnsyAAzEvOU9Oe1L3-N66qqwZw/exec";
+            // Đã cập nhật URL Web App Google Apps Script mới
+            const webAppUrl = "https://script.google.com/macros/s/AKfycby5K7vO5aZD8uoRi_R4S-H--4WW52AueuonyLba8nTJl1HHfW-eSqyxPfmyXMMDxjM9GA/exec";
             let exportData = [];
             let sttTong = 1;
 
@@ -1024,16 +1025,20 @@
 
             fetch(webAppUrl, {
                 method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(exportData)
             })
-            .then(() => {
-                alert("✅ Đã gửi dữ liệu thành công sang Google Trang Tính!");
+            .then(response => response.json())
+            .then(res => {
+                if (res.result === "success") {
+                    alert(`✅ Đã xuất thành công sang Google Sheet với tên trang tính: ${res.sheet}`);
+                } else {
+                    alert("❌ Đã có lỗi xảy ra từ máy chủ: " + res.message);
+                }
             })
             .catch(error => {
                 console.error('Lỗi khi gửi dữ liệu:', error);
-                alert("❌ Đã có lỗi xảy ra khi truyền dữ liệu sang Google Trang Tính.");
+                alert("❌ Lỗi kết nối tới Google Trang Tính.");
             });
         }
 
