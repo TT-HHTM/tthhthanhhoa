@@ -302,7 +302,7 @@
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
-            width: 320px;
+            width: 350px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
     </style>
@@ -321,7 +321,7 @@
             <!-- Form Nhập Túi Máu -->
             <div class="card">
                 <h3>Nhập Liệu Túi Máu Vào Hàng Khay</h3>
-                <form id="addBloodForm" style="display: grid; grid-template-columns: repeat(7, 1fr) 90px; gap: 8px; align-items: end;">
+                <form id="addBloodForm" style="display: grid; grid-template-columns: repeat(9, 1fr) 90px; gap: 8px; align-items: end;">
                     <div class="form-group">
                         <label>Vị trí Ngăn</label>
                         <select id="selectNgan" required></select>
@@ -366,6 +366,14 @@
                             <option value="350">350 ml</option>
                             <option value="450">450 ml</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày Nhập</label>
+                        <input type="date" id="ngayNhap" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Hạn Sử Dụng</label>
+                        <input type="date" id="hanSuDung" readonly style="background-color: #e9ecef;">
                     </div>
                     <div class="form-group">
                         <button type="submit" style="height: 36px;">Thêm</button>
@@ -477,6 +485,14 @@
                     <option value="450">450 ml</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label>Ngày Nhập:</label>
+                <input type="date" id="editNgayNhap" required>
+            </div>
+            <div class="form-group">
+                <label>Hạn Sử Dụng:</label>
+                <input type="date" id="editHanSuDung" readonly style="background-color: #e9ecef;">
+            </div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
                 <button id="saveEditItemBtn" style="background-color: #0288d1;">Lưu Thay Đổi</button>
                 <button onclick="closeEditModal()" style="background-color: #757575;">Hủy</button>
@@ -485,12 +501,40 @@
     </div>
 
     <script>
-        // URL Web App Google Apps Script
+        // URL Web App của bạn đã được gắn cố định tại đây
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz3hnIpYTpIaXoiJEByYL_tLmL_UDGLwv61AKJurH59VxBBLgSC92SOUooyWiNB_v8YLA/exec";
 
         const totalNgan = 12;
         const totalRows = 4;
         let inventory = JSON.parse(localStorage.getItem('blood_inventory_v5')) || {};
+
+        // Đặt ngày nhập mặc định là hôm nay và tự động tính HSD (+42 ngày)
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('ngayNhap').value = todayStr;
+
+        function addDays(dateStr, days) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            date.setDate(date.getDate() + days);
+            return date.toISOString().split('T')[0];
+        }
+
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return dateStr;
+        }
+
+        document.getElementById('hanSuDung').value = addDays(todayStr, 42);
+
+        document.getElementById('ngayNhap').addEventListener('change', function() {
+            document.getElementById('hanSuDung').value = addDays(this.value, 42);
+        });
+
+        document.getElementById('editNgayNhap').addEventListener('change', function() {
+            document.getElementById('editHanSuDung').value = addDays(this.value, 42);
+        });
 
         function initInventory() {
             inventory = {};
@@ -509,7 +553,6 @@
         if (Object.keys(inventory).length === 0) {
             initInventory();
         } else {
-            // Đảm bảo dữ liệu cũ đầy đủ từ ngăn 1 đến ngăn 12
             for (let i = 1; i <= totalNgan; i++) {
                 if (!inventory[i]) {
                     inventory[i] = {
@@ -524,7 +567,6 @@
             }
         }
 
-        // Khởi tạo các ô Select Ngăn
         const selectNgan = document.getElementById('selectNgan');
         const modalToNgan = document.getElementById('modalToNgan');
 
@@ -541,7 +583,6 @@
         }
         populateNganSelects();
 
-        // Đổi mã khay
         function editBarcodeKhay(nganId, hangId) {
             const currentBarcode = inventory[nganId].rows[hangId].barcodeKhay || '';
             const newBarcode = prompt(`Nhập mã Barcode khay mới cho Ngăn ${nganId} - Hàng ${hangId}:`, currentBarcode);
@@ -552,7 +593,6 @@
             }
         }
 
-        // Xử lý Modal Chuyển
         let currentMoveType = null;
         let currentSrcNgan = null;
         let currentSrcHang = null;
@@ -613,7 +653,6 @@
             document.getElementById('searchResult').innerHTML = '';
         });
 
-        // Xử lý Modal Sửa Túi Máu
         let editTargetNgan = null;
         let editTargetHang = null;
         let editTargetIndex = null;
@@ -628,6 +667,8 @@
             document.getElementById('editNhomMau').value = item.nhom;
             document.getElementById('editRhFactor').value = item.rh;
             document.getElementById('editDungTich').value = item.dungTich;
+            document.getElementById('editNgayNhap').value = item.ngayNhap || todayStr;
+            document.getElementById('editHanSuDung').value = item.hanSuDung || addDays(item.ngayNhap || todayStr, 42);
 
             document.getElementById('editItemModal').style.display = 'flex';
         }
@@ -641,6 +682,8 @@
             const newNhom = document.getElementById('editNhomMau').value;
             const newRh = document.getElementById('editRhFactor').value;
             const newDungTich = document.getElementById('editDungTich').value;
+            const newNgayNhap = document.getElementById('editNgayNhap').value;
+            const newHanSuDung = document.getElementById('editHanSuDung').value;
 
             if (!newBarcode) {
                 alert('Barcode túi máu không được để trống!');
@@ -663,6 +706,8 @@
             currentItem.nhom = newNhom;
             currentItem.rh = newRh;
             currentItem.dungTich = newDungTich;
+            currentItem.ngayNhap = newNgayNhap;
+            currentItem.hanSuDung = newHanSuDung;
 
             alert('Đã cập nhật thông tin túi máu thành công!');
             closeEditModal();
@@ -691,6 +736,8 @@
                             <td>${item.barcode}</td>
                             <td>${item.nhom} (${item.rh})</td>
                             <td>${item.dungTich}ml</td>
+                            <td>${formatDateDisplay(item.ngayNhap)}</td>
+                            <td>${formatDateDisplay(item.hanSuDung)}</td>
                             <td>
                                 <button class="btn-edit-single" title="Sửa thông tin" onclick="openEditItemModal(${i}, ${r}, ${index})">✏️</button>
                                 <button class="btn-move-single" title="Chuyển vị trí" onclick="openMoveItemModal(${i}, ${r}, ${index})">🔄</button>
@@ -718,6 +765,8 @@
                                         <th>Barcode Túi</th>
                                         <th>Nhóm / Rh</th>
                                         <th>Dung Tích</th>
+                                        <th>Ngày Nhập</th>
+                                        <th>Hạn Sử Dụng</th>
                                         <th style="width: 85px;">Thao Tác</th>
                                     </tr>
                                 </thead>
@@ -749,12 +798,10 @@
             leftCol.innerHTML = '<div class="column-title">CỘT BÊN TRÁI (NGĂN 1 - 6)</div>';
             rightCol.innerHTML = '<div class="column-title">CỘT BÊN PHẢI (NGĂN 7 - 12)</div>';
 
-            // Render Ngăn 1 -> 6 vào cột trái
             for (let i = 1; i <= 6; i++) {
                 leftCol.appendChild(createCompartmentBox(i));
             }
 
-            // Render Ngăn 7 -> 12 vào cột phải
             for (let i = 7; i <= 12; i++) {
                 rightCol.appendChild(createCompartmentBox(i));
             }
@@ -772,6 +819,8 @@
             const nhomMau = document.getElementById('nhomMau').value;
             const rhFactor = document.getElementById('rhFactor').value;
             const dungTich = document.getElementById('dungTich').value;
+            const ngayNhap = document.getElementById('ngayNhap').value;
+            const hanSuDung = document.getElementById('hanSuDung').value;
 
             if (!barcodeTui) return;
 
@@ -789,7 +838,9 @@
                 barcode: barcodeTui,
                 nhom: nhomMau,
                 rh: rhFactor,
-                dungTich: dungTich
+                dungTich: dungTich,
+                ngayNhap: ngayNhap,
+                hanSuDung: hanSuDung
             });
 
             document.getElementById('barcodeTui').value = '';
@@ -818,6 +869,7 @@
             }
         }
 
+        // Hàm xuất file Excel và đồng bộ Google Sheets đã được tích hợp
         function exportToExcel() {
             let exportData = [];
             let itemsForGoogleSheet = [];
@@ -837,7 +889,9 @@
                             "Barcode Túi Máu": item.barcode,
                             "Nhóm Máu": item.nhom,
                             "Yếu Tố Rh": item.rh,
-                            "Dung Tích (ml)": item.dungTich
+                            "Dung Tích (ml)": item.dungTich,
+                            "Ngày Nhập": formatDateDisplay(item.ngayNhap),
+                            "Hạn Sử Dụng": formatDateDisplay(item.hanSuDung)
                         });
 
                         // Dữ liệu đồng bộ sang trang tính Google Sheet
@@ -850,7 +904,8 @@
                             nhomMau: item.nhom,
                             rh: item.rh,
                             dungTich: item.dungTich,
-                            hanSuDung: ''
+                            ngayNhap: formatDateDisplay(item.ngayNhap),
+                            hanSuDung: formatDateDisplay(item.hanSuDung)
                         });
 
                         sttTong++;
@@ -877,6 +932,8 @@
                 { wch: 20 },
                 { wch: 12 },
                 { wch: 12 },
+                { wch: 15 },
+                { wch: 15 },
                 { wch: 15 }
             ];
 
@@ -898,6 +955,15 @@
             setTimeout(() => {
                 alert("✅ Đã xuất file Excel và tự động tạo trang tính mới trên Google Sheet!");
             }, 300);
+        }
+
+        function parseFormattedDate(dateStr) {
+            if (!dateStr) return '';
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+            return dateStr;
         }
 
         function importFromExcel(event) {
@@ -936,6 +1002,15 @@
                         const nhomMau = String(row["Nhóm Máu"] || "O").trim();
                         const rhFactor = String(row["Yếu Tố Rh"] || "Rh+").trim();
                         const dungTich = String(row["Dung Tích (ml)"] || "250").trim();
+                        let ngayNhap = parseFormattedDate(String(row["Ngày Nhập"] || "").trim());
+                        let hanSuDung = parseFormattedDate(String(row["Hạn Sử Dụng"] || "").trim());
+
+                        if (!ngayNhap) {
+                            ngayNhap = todayStr;
+                        }
+                        if (!hanSuDung) {
+                            hanSuDung = addDays(ngayNhap, 42);
+                        }
 
                         const nganMatch = nganText.match(/\d+/);
                         const hangMatch = hangText.match(/\d+/);
@@ -950,7 +1025,9 @@
                                     barcode: barcodeTui,
                                     nhom: nhomMau,
                                     rh: rhFactor,
-                                    dungTich: dungTich
+                                    dungTich: dungTich,
+                                    ngayNhap: ngayNhap,
+                                    hanSuDung: hanSuDung
                                 });
                                 count++;
                             }
@@ -1007,6 +1084,8 @@
                     - Mã khay: <b>${inventory[foundNgan].rows[foundHang].barcodeKhay || 'Trống'}</b><br>
                     - Nhóm máu: <b>${found.nhom} (${found.rh})</b><br>
                     - Dung tích: <b>${found.dungTich} ml</b><br>
+                    - Ngày nhập: <b>${formatDateDisplay(found.ngayNhap)}</b><br>
+                    - Hạn sử dụng: <b>${formatDateDisplay(found.hanSuDung)}</b><br>
                     <div style="display: flex; gap: 5px; margin-top: 8px;">
                         <button class="btn-edit-single" style="flex:1; padding: 6px;" onclick="openEditItemModal(${foundNgan}, ${foundHang}, ${foundIndex})">✏️ Sửa thông tin</button>
                         <button class="btn-move-tray" style="flex:1; padding: 6px;" onclick="openMoveItemModal(${foundNgan}, ${foundHang}, ${foundIndex})">🔄 Chuyển vị trí</button>
