@@ -456,7 +456,8 @@
     </div>
 
     <script>
-        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyETTUFni1p4dg1b45C3YLNnkNpDKIrNv9Dn6BAeVocGYTdCLXSSGwyqEf7ZEDkxc6uUw/exec";
+        // Đã cập nhật URL Web App mới của bạn ở đây
+        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzterJYphGthceMjYSxO2436pipHXvv3RlgLsaD6iHM9MRIAfa8eCUpd-KqmozVGeUoRg/exec";
 
         const totalNgan = 12;
         const totalRows = 3;
@@ -746,7 +747,7 @@
             document.getElementById('barcodeTui').focus();
         });
 
-        // BƯỚC 2: Quét barcode xuất kho nhanh (Đã bỏ thông báo alert và lược bỏ thông tin ngăn/hàng cũ)
+        // BƯỚC 2: Quét barcode xuất kho nhanh
         document.getElementById('quickCheckoutForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const barcodeOut = document.getElementById('barcodeCheckout').value.trim().toLowerCase();
@@ -782,7 +783,6 @@
                 };
 
                 try {
-                    // Gửi ngầm lên Google Sheets không làm gián đoạn giao diện và không đính kèm vị trí cũ
                     fetch(GOOGLE_SCRIPT_WEBAPP_URL, {
                         method: "POST",
                         mode: "no-cors",
@@ -790,7 +790,6 @@
                         body: JSON.stringify(checkoutData)
                     });
 
-                    // Xóa túi máu khỏi giao diện kho sạch ngay lập tức
                     inventory[targetNgan].rows[targetHang].items.splice(targetIndex, 1);
                     renderView();
                 } catch (error) {
