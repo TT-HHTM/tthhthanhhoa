@@ -501,8 +501,8 @@
     </div>
 
     <script>
-        // URL Web App của bạn đã được gắn cố định tại đây
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzterJYphGthceMjYSxO2436pipHXvv3RlgLsaD6iHM9MRIAfa8eCUpd-KqmozVGeUoRg/exec";
+        // URL Web App mới được cập nhật
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwswpjQUBg4dPLROUyJU48uQDorczMmzYNJXxOjk5zmYgtStetXE8Yt_pQlZc_ZibTKsQ/exec";
 
         const totalNgan = 12;
         const totalRows = 4;
@@ -869,7 +869,6 @@
             }
         }
 
-        // Hàm xuất file Excel và đồng bộ Google Sheets đã được tích hợp thêm cột Tủ lưu trữ (36-TTB237)
         function exportToExcel() {
             let exportData = [];
             let itemsForGoogleSheet = [];
@@ -879,7 +878,6 @@
                 for (let r = 1; r <= totalRows; r++) {
                     const rowData = inventory[n].rows[r];
                     rowData.items.forEach((item, index) => {
-                        // Dữ liệu cho file Excel
                         exportData.push({
                             "STT": sttTong,
                             "Tủ lưu trữ": "36-TTB237",
@@ -895,7 +893,6 @@
                             "Hạn Sử Dụng": formatDateDisplay(item.hanSuDung)
                         });
 
-                        // Dữ liệu đồng bộ sang trang tính Google Sheet
                         itemsForGoogleSheet.push({
                             tuLuuTru: "36-TTB237",
                             ngan: `NGĂN ${n}`,
@@ -920,7 +917,6 @@
                 return;
             }
 
-            // 1. Xuất file Excel về máy
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "KHO_MAU_TTB237");
@@ -943,7 +939,6 @@
             const fileName = `KHO_MAU_TTB237_${new Date().toISOString().slice(0,10)}.xlsx`;
             XLSX.writeFile(workbook, fileName);
 
-            // 2. Gửi dữ liệu tới Apps Script để tạo trang tính 237FN_ddmmyy mới
             fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 mode: "no-cors",
