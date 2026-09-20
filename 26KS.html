@@ -455,7 +455,8 @@
     </div>
 
     <script>
-        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbweFTCNFX5iCLpc5QJBc0mFLn5DzzaQf5ExeW0uL7avusxd5sOYY26LvmRtm8pY9Cic/exec";
+        // Cập nhật URL API mới chính xác không bị lỗi CORS
+        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwT0218VgwZNxqx4b8nqf-Y9kvOWrEdpnY6DjNT9wQmW8Bu-VUN9z3rnAuIh_fCXWpE/exec";
 
         const totalNgan = 6;
         const totalRows = 4;
@@ -504,7 +505,6 @@
                         }
                     };
                 } else {
-                    // Đảm bảo đủ 4 hàng nếu dữ liệu cũ ít hơn
                     for (let r = 1; r <= totalRows; r++) {
                         if (!inventory[i].rows[r]) {
                             inventory[i].rows[r] = { barcodeKhay: '', items: [] };
@@ -719,8 +719,8 @@
             updateStats();
         }
 
-        // Quét barcode thêm túi vào ngăn
-        document.getElementById('quickAddForm').addEventListener('submit', function(e) {
+        // Quét barcode thêm túi vào ngăn và tự động đồng bộ lấy thông tin từ Google Sheets
+        document.getElementById('quickAddForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const nganId = document.getElementById('selectNgan').value;
             const hangId = document.getElementById('selectHang').value;
@@ -728,7 +728,7 @@
 
             if (!barcodeTui) return;
 
-            // Kiểm tra trùng lặp
+            // Kiểm tra trùng lặp trong kho sạch
             for (let n in inventory) {
                 for (let r in inventory[n].rows) {
                     if (inventory[n].rows[r].items.some(item => item.barcode.toLowerCase() === barcodeTui.toLowerCase())) {
@@ -739,6 +739,7 @@
                 }
             }
 
+            // Thêm tạm vào giao diện trước với trạng thái Chưa rõ
             inventory[nganId].rows[hangId].items.push({
                 barcode: barcodeTui,
                 nhom: 'Chưa rõ',
@@ -749,6 +750,28 @@
 
             document.getElementById('barcodeTui').value = '';
             renderView();
+
+            // Tự động gọi API lấy thông tin từ Google Sheets ngay khi quét
+            const currentItemIndex = inventory[nganId].rows[hangId].items.length - 1;
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_WEBAPP_URL}?action=getBloodInfo&barcode=${encodeURIComponent(barcodeTui)}`);
+                const resData = await response.json();
+
+                if (resData.status === 'success') {
+                    const info = resData.data;
+                    inventory[nganId].rows[hangId].items[currentItemIndex] = {
+                        barcode: barcodeTui,
+                        nhom: info.nhomMau || 'O',
+                        rh: info.rh || 'Rh+',
+                        dungTich: info.theTich || '250',
+                        hanSuDung: info.hanSuDung || ''
+                    };
+                    renderView();
+                }
+            } catch (err) {
+                console.error("Lỗi tự động đồng bộ thông tin túi máu:", err);
+            }
+
             document.getElementById('barcodeTui').focus();
         });
 
@@ -791,7 +814,7 @@
                     fetch(GOOGLE_SCRIPT_WEBAPP_URL, {
                         method: "POST",
                         mode: "no-cors",
-                        headers: { "Content-Type": "application/json" },
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify(checkoutData)
                     });
 
@@ -808,7 +831,7 @@
             document.getElementById('barcodeCheckout').focus();
         });
 
-        // Cập nhật dữ liệu từ Google Sheets
+        // Cập nhật toàn bộ dữ liệu từ Google Sheets
         async function fetchAndUpdateAllData() {
             let pendingItems = [];
             for (let n in inventory) {
