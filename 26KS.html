@@ -135,12 +135,7 @@
             background-color: #e53935;
         }
 
-        .grid-layout {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-
+        /* Giao diện danh sách ngăn (1 cột hoặc lưới tuỳ chỉnh) */
         .column-container {
             display: flex;
             flex-direction: column;
@@ -301,7 +296,7 @@
         <!-- Cột trái: Form nhập & Các ngăn -->
         <div class="main-content">
             
-            <!-- Form Quét Nhanh (Quét barcode vào ngăn/hàng chỉ định) -->
+            <!-- Form Quét Nhanh -->
             <div class="card">
                 <h3>Thêm Nhanh Túi Máu Vào Ngăn</h3>
                 <form id="quickAddForm" style="display: grid; grid-template-columns: 1fr 1fr 2fr 140px; gap: 10px; align-items: end;">
@@ -342,11 +337,9 @@
                 </form>
             </div>
 
-            <!-- Khung hiển thị các ngăn (1 đến 6) -->
-            <div class="grid-layout">
-                <div class="column-container" id="nganContainer">
-                    <div class="column-title">DANH SÁCH NGĂN (NGĂN 1 - 6)</div>
-                </div>
+            <!-- Khung hiển thị các ngăn (Ngăn 1 - 6) -->
+            <div class="column-container" id="nganContainer">
+                <div class="column-title">DANH SÁCH NGĂN (1 - 6)</div>
             </div>
         </div>
 
@@ -455,11 +448,11 @@
     </div>
 
     <script>
-        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx4m1dt3dSGsRb7CqRRJNkyXLG7dO1VuOc7KLSc-t5VX9CbZgRN6R0dI78Ha47r99EXFQ/exec";
+        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw4cvGyykfX41Du9oju18rTJiGtL_9WE-4fBNukh9P-XuTaMwQt8LM520v_vyNSijZMcg/exec";
 
         const totalNgan = 6;
         const totalRows = 4;
-        let inventory = JSON.parse(localStorage.getItem('blood_inventory_clean_v2')) || {};
+        let inventory = JSON.parse(localStorage.getItem('blood_inventory_clean_36_ttb26')) || {};
 
         function addDaysToDate(dateString, days) {
             if (!dateString) return '';
@@ -469,21 +462,28 @@
             return date.toISOString().slice(0, 10);
         }
 
-        // Đã sửa lại hàm này để lọc sạch lỗi định dạng chuỗi ISO từ Google Sheets
         function formatDateToDisplay(dateString) {
             if (!dateString) return '';
             
-            // Xử lý cắt chuỗi nếu dữ liệu trả về dạng ISO đầy đủ chứa 'T' hoặc 'Z'
-            if (typeof dateString === 'string' && (dateString.includes('T') || dateString.includes('Z'))) {
-                dateString = dateString.split('T')[0];
+            if (typeof dateString === 'string') {
+                if (dateString.includes('T') || dateString.includes('Z')) {
+                    const parsedDate = new Date(dateString);
+                    if (!isNaN(parsedDate.getTime())) {
+                        const day = String(parsedDate.getDate()).padStart(2, '0');
+                        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                        const year = parsedDate.getFullYear();
+                        return `${day}/${month}/${year}`;
+                    }
+                    dateString = dateString.split('T')[0];
+                }
             }
 
             const parts = dateString.split('-');
             if (parts.length === 3) {
                 if (parts[0].length === 4) {
-                    return `${parts[2]}/${parts[1]}/${parts[0]}`; // YYYY-MM-DD sang DD/MM/YYYY
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`; 
                 }
-                return `${parts[0]}/${parts[1]}/${parts[2]}`; // DD-MM-YYYY giữ nguyên trật tự hiển thị
+                return `${parts[0]}/${parts[1]}/${parts[2]}`; 
             }
             return dateString;
         }
@@ -720,10 +720,11 @@
 
         function renderView() {
             const nganContainer = document.getElementById('nganContainer');
-            nganContainer.innerHTML = '<div class="column-title">DANH SÁCH NGĂN (NGĂN 1 - 6)</div>';
+            nganContainer.innerHTML = '<div class="column-title">DANH SÁCH NGĂN (1 - 6)</div>';
 
             for (let i = 1; i <= totalNgan; i++) {
-                nganContainer.appendChild(createCompartmentBox(i));
+                const box = createCompartmentBox(i);
+                nganContainer.appendChild(box);
             }
 
             saveData();
@@ -1072,7 +1073,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('blood_inventory_clean_v2', JSON.stringify(inventory));
+            localStorage.setItem('blood_inventory_clean_36_ttb26', JSON.stringify(inventory));
         }
 
         renderView();
