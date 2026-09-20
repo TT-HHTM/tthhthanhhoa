@@ -502,7 +502,7 @@
 
     <script>
         // URL Web App của bạn đã được gắn cố định tại đây
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz3hnIpYTpIaXoiJEByYL_tLmL_UDGLwv61AKJurH59VxBBLgSC92SOUooyWiNB_v8YLA/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGSGVQn92OdkFyy7PcgAW2twtnssgeCGbniQcvtO3e_kcna3QBhqW_hBVBVs39OtCpGA/exec";
 
         const totalNgan = 12;
         const totalRows = 4;
@@ -869,7 +869,7 @@
             }
         }
 
-        // Hàm xuất file Excel và đồng bộ Google Sheets đã được tích hợp
+        // Hàm xuất file Excel và đồng bộ Google Sheets đã được tích hợp thêm cột Tủ lưu trữ (36-TTB237)
         function exportToExcel() {
             let exportData = [];
             let itemsForGoogleSheet = [];
@@ -882,6 +882,7 @@
                         // Dữ liệu cho file Excel
                         exportData.push({
                             "STT": sttTong,
+                            "Tủ lưu trữ": "36-TTB237",
                             "Ngăn": `NGĂN ${n}`,
                             "Hàng Khay": `HÀNG ${r}`,
                             "STT Trong Khay": index + 1,
@@ -896,6 +897,7 @@
 
                         // Dữ liệu đồng bộ sang trang tính Google Sheet
                         itemsForGoogleSheet.push({
+                            tuLuuTru: "36-TTB237",
                             ngan: `NGĂN ${n}`,
                             hang: `HÀNG ${r}`,
                             sttTrongKhay: index + 1,
@@ -925,6 +927,7 @@
 
             worksheet['!cols'] = [
                 { wch: 6 },
+                { wch: 15 },
                 { wch: 10 },
                 { wch: 12 },
                 { wch: 15 },
