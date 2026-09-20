@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Kho Sạch - TTB236</title>
+    <title>Quản Lý Kho Sạch - TTB36-TTB236</title>
     <!-- Thư viện SheetJS để xuất/nhập file Excel (.xlsx / .xls) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
@@ -135,6 +135,7 @@
             background-color: #e53935;
         }
 
+        /* Chia giao diện danh sách ngăn thành 2 cột: Trái (1-6) và Phải (7-12) */
         .grid-layout {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -298,10 +299,10 @@
     </div>
 
     <div class="container">
-        <!-- Cột trái: Form nhập & Các ngăn -->
+        <!-- Cột trái: Form nhập & Các ngăn chia 2 bên -->
         <div class="main-content">
             
-            <!-- Form Quét Nhanh (Quét barcode vào ngăn/hàng chỉ định) -->
+            <!-- Form Quét Nhanh -->
             <div class="card">
                 <h3>Thêm Nhanh Túi Máu Vào Ngăn</h3>
                 <form id="quickAddForm" style="display: grid; grid-template-columns: 1fr 1fr 2fr 140px; gap: 10px; align-items: end;">
@@ -315,6 +316,7 @@
                             <option value="1">Hàng 1</option>
                             <option value="2">Hàng 2</option>
                             <option value="3">Hàng 3</option>
+                            <option value="4">Hàng 4</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -341,13 +343,13 @@
                 </form>
             </div>
 
-            <!-- Khung hiển thị 12 ngăn -->
+            <!-- Khung hiển thị các ngăn chia 2 cột: Ngăn 1-6 bên trái, Ngăn 7-12 bên phải -->
             <div class="grid-layout">
-                <div class="column-container" id="leftColumn">
-                    <div class="column-title">CỘT BÊN TRÁI (NGĂN 1 - 6)</div>
+                <div class="column-container" id="nganContainerLeft">
+                    <div class="column-title">NGĂN 1 - 6 (BÊN TRÁI)</div>
                 </div>
-                <div class="column-container" id="rightColumn">
-                    <div class="column-title">CỘT BÊN PHẢI (NGĂN 7 - 12)</div>
+                <div class="column-container" id="nganContainerRight">
+                    <div class="column-title">NGĂN 7 - 12 (BÊN PHẢI)</div>
                 </div>
             </div>
         </div>
@@ -403,6 +405,7 @@
                     <option value="1">Hàng 1</option>
                     <option value="2">Hàng 2</option>
                     <option value="3">Hàng 3</option>
+                    <option value="4">Hàng 4</option>
                 </select>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -456,11 +459,11 @@
     </div>
 
     <script>
-        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxtxtUAyb6GHvMiWE4vSOCDxr53jMBUAaBkoIMUv66vycDST-UYabnq_cfIVgvto3GZ5A/exec";
+        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwT0218VgwZNxqx4b8nqf-Y9kvOWrEdpnY6DjNT9wQmW8Bu-VUN9z3rnAuIh_fCXWpE/exec";
 
         const totalNgan = 12;
-        const totalRows = 3;
-        let inventory = JSON.parse(localStorage.getItem('blood_inventory_clean_v1')) || {};
+        const totalRows = 4;
+        let inventory = JSON.parse(localStorage.getItem('blood_inventory_clean_36_ttb236')) || {};
 
         function addDaysToDate(dateString, days) {
             if (!dateString) return '';
@@ -472,8 +475,18 @@
 
         function formatDateToDisplay(dateString) {
             if (!dateString) return '';
+            
+            if (typeof dateString === 'string' && (dateString.includes('T') || dateString.includes('Z'))) {
+                dateString = dateString.split('T')[0];
+            }
+
             const parts = dateString.split('-');
-            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            if (parts.length === 3) {
+                if (parts[0].length === 4) {
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`; 
+                }
+                return `${parts[0]}/${parts[1]}/${parts[2]}`; 
+            }
             return dateString;
         }
 
@@ -484,7 +497,8 @@
                     rows: {
                         1: { barcodeKhay: '', items: [] },
                         2: { barcodeKhay: '', items: [] },
-                        3: { barcodeKhay: '', items: [] }
+                        3: { barcodeKhay: '', items: [] },
+                        4: { barcodeKhay: '', items: [] }
                     }
                 };
             }
@@ -499,9 +513,16 @@
                         rows: {
                             1: { barcodeKhay: '', items: [] },
                             2: { barcodeKhay: '', items: [] },
-                            3: { barcodeKhay: '', items: [] }
+                            3: { barcodeKhay: '', items: [] },
+                            4: { barcodeKhay: '', items: [] }
                         }
                     };
+                } else {
+                    for (let r = 1; r <= totalRows; r++) {
+                        if (!inventory[i].rows[r]) {
+                            inventory[i].rows[r] = { barcodeKhay: '', items: [] };
+                        }
+                    }
                 }
             }
         }
@@ -700,21 +721,26 @@
         }
 
         function renderView() {
-            const leftCol = document.getElementById('leftColumn');
-            const rightCol = document.getElementById('rightColumn');
+            const nganContainerLeft = document.getElementById('nganContainerLeft');
+            const nganContainerRight = document.getElementById('nganContainerRight');
+            
+            nganContainerLeft.innerHTML = '<div class="column-title">NGĂN 1 - 6 (BÊN TRÁI)</div>';
+            nganContainerRight.innerHTML = '<div class="column-title">NGĂN 7 - 12 (BÊN PHẢI)</div>';
 
-            leftCol.innerHTML = '<div class="column-title">CỘT BÊN TRÁI (NGĂN 1 - 6)</div>';
-            rightCol.innerHTML = '<div class="column-title">CỘT BÊN PHẢI (NGĂN 7 - 12)</div>';
-
-            for (let i = 1; i <= 6; i++) leftCol.appendChild(createCompartmentBox(i));
-            for (let i = 7; i <= 12; i++) rightCol.appendChild(createCompartmentBox(i));
+            for (let i = 1; i <= totalNgan; i++) {
+                const box = createCompartmentBox(i);
+                if (i <= 6) {
+                    nganContainerLeft.appendChild(box);
+                } else {
+                    nganContainerRight.appendChild(box);
+                }
+            }
 
             saveData();
             updateStats();
         }
 
-        // BƯỚC 1: Quét barcode thêm túi vào ngăn
-        document.getElementById('quickAddForm').addEventListener('submit', function(e) {
+        document.getElementById('quickAddForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const nganId = document.getElementById('selectNgan').value;
             const hangId = document.getElementById('selectHang').value;
@@ -722,7 +748,6 @@
 
             if (!barcodeTui) return;
 
-            // Kiểm tra trùng lặp
             for (let n in inventory) {
                 for (let r in inventory[n].rows) {
                     if (inventory[n].rows[r].items.some(item => item.barcode.toLowerCase() === barcodeTui.toLowerCase())) {
@@ -743,10 +768,30 @@
 
             document.getElementById('barcodeTui').value = '';
             renderView();
+
+            const currentItemIndex = inventory[nganId].rows[hangId].items.length - 1;
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_WEBAPP_URL}?action=getBloodInfo&barcode=${encodeURIComponent(barcodeTui)}`);
+                const resData = await response.json();
+
+                if (resData.status === 'success') {
+                    const info = resData.data;
+                    inventory[nganId].rows[hangId].items[currentItemIndex] = {
+                        barcode: barcodeTui,
+                        nhom: info.nhomMau || 'O',
+                        rh: info.rh || 'Rh+',
+                        dungTich: info.theTich || '250',
+                        hanSuDung: info.hanSuDung || ''
+                    };
+                    renderView();
+                }
+            } catch (err) {
+                console.error("Lỗi tự động đồng bộ thông tin túi máu:", err);
+            }
+
             document.getElementById('barcodeTui').focus();
         });
 
-        // BƯỚC 2: Quét barcode xuất kho nhanh
         document.getElementById('quickCheckoutForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const barcodeOut = document.getElementById('barcodeCheckout').value.trim().toLowerCase();
@@ -785,7 +830,7 @@
                     fetch(GOOGLE_SCRIPT_WEBAPP_URL, {
                         method: "POST",
                         mode: "no-cors",
-                        headers: { "Content-Type": "application/json" },
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify(checkoutData)
                     });
 
@@ -802,7 +847,6 @@
             document.getElementById('barcodeCheckout').focus();
         });
 
-        // Cập nhật dữ liệu từ Google Sheets
         async function fetchAndUpdateAllData() {
             let pendingItems = [];
             for (let n in inventory) {
@@ -860,7 +904,12 @@
         function clearCompartmentData(nganId) {
             if (confirm(`Xóa toàn bộ túi máu trong NGĂN ${nganId}?`)) {
                 inventory[nganId] = {
-                    rows: { 1: { barcodeKhay: '', items: [] }, 2: { barcodeKhay: '', items: [] }, 3: { barcodeKhay: '', items: [] } }
+                    rows: { 
+                        1: { barcodeKhay: '', items: [] }, 
+                        2: { barcodeKhay: '', items: [] }, 
+                        3: { barcodeKhay: '', items: [] },
+                        4: { barcodeKhay: '', items: [] } 
+                    }
                 };
                 renderView();
             }
@@ -904,8 +953,8 @@
 
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "KHO_SACH_TTB236");
-            XLSX.writeFile(workbook, `KHO_SACH_TTB236_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "KHO_SACH_36-TTB236");
+            XLSX.writeFile(workbook, `KHO_SACH_36-TTB236_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function importFromExcel(event) {
@@ -1033,7 +1082,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('blood_inventory_clean_v1', JSON.stringify(inventory));
+            localStorage.setItem('blood_inventory_clean_36_ttb236', JSON.stringify(inventory));
         }
 
         renderView();
