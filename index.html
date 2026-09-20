@@ -8,6 +8,8 @@
         :root {
             --primary-color: #b71c1c;
             --hover-color: #d32f2f;
+            --clean-primary: #2e7d32;
+            --clean-hover: #388e3c;
             --bg-color: #f4f6f9;
             --card-bg: #ffffff;
             --text-color: #333333;
@@ -26,18 +28,17 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
             padding: 20px;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .header h1 {
-            color: var(--primary-color);
+            color: #222;
             font-size: 2.2rem;
             margin-bottom: 10px;
             text-transform: uppercase;
@@ -47,6 +48,27 @@
         .header p {
             color: #666;
             font-size: 1.1rem;
+        }
+
+        .section-title {
+            width: 100%;
+            max-width: 1200px;
+            margin: 30px 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 3px solid #ddd;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .section-title.kho-tho {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .section-title.kho-sach {
+            color: var(--clean-primary);
+            border-color: var(--clean-primary);
         }
 
         .grid-container {
@@ -67,12 +89,24 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+        }
+
+        .card.tho {
             border-top: 6px solid var(--primary-color);
         }
 
-        .card:hover {
+        .card.tho:hover {
             transform: translateY(-8px);
             box-shadow: 0 12px 25px rgba(183, 28, 28, 0.15);
+        }
+
+        .card.sach {
+            border-top: 6px solid var(--clean-primary);
+        }
+
+        .card.sach:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 25px rgba(46, 125, 50, 0.15);
         }
 
         .card-icon {
@@ -95,7 +129,6 @@
 
         .btn {
             display: inline-block;
-            background-color: var(--primary-color);
             color: #ffffff;
             text-decoration: none;
             padding: 12px 20px;
@@ -105,8 +138,18 @@
             transition: background-color 0.2s ease;
         }
 
-        .btn:hover {
+        .btn.tho {
+            background-color: var(--primary-color);
+        }
+        .btn.tho:hover {
             background-color: var(--hover-color);
+        }
+
+        .btn.sach {
+            background-color: var(--clean-primary);
+        }
+        .btn.sach:hover {
+            background-color: var(--clean-hover);
         }
 
         footer {
@@ -124,50 +167,76 @@
         <p>Vui lòng chọn hệ thống tủ lạnh cần quản lý</p>
     </div>
 
+    <!-- PHẦN TRÊN: KHO THÔ -->
+    <h2 class="section-title kho-tho">📦 Kho Thô</h2>
     <div class="grid-container">
         <!-- Tủ TTB237 (Cũ) -->
-        <div class="card">
+        <div class="card tho">
             <div>
                 <div class="card-icon">❄️</div>
                 <h2>Tủ Lạnh 36-TTB237</h2>
-                <p>Hệ thống quản lý quy mô lớn gồm <b>12 ngăn chứa</b> (6 ngăn bên trái, 6 ngăn bên phải), hỗ trợ lưu trữ nhiều hàng khay.</p>
+                <p>Hệ thống quản lý quy mô lớn gồm <b>12 ngăn chứa</b> (6 ngăn bên trái, 6 ngăn bên phải), hỗ trợ lưu trữ nhiều hàng khay[cite: 1].</p>
             </div>
-            <a href="237FN.html" class="btn">Truy Cập Tủ 36-TTB237 &rarr;</a>
+            <a href="237FN.html" class="btn tho">Truy Cập Tủ 36-TTB237 &rarr;</a>
         </div>
 
         <!-- Tủ TTB25 (Cũ) -->
-        <div class="card">
+        <div class="card tho">
             <div>
                 <div class="card-icon">🧊</div>
                 <h2>Tủ Lạnh 36-TTB25</h2>
-                <p>Hệ thống quản lý quy mô vừa gồm <b>6 ngăn chứa</b> (cột bên trái), giao diện tối ưu hóa cho quản lý tiêu chuẩn.</p>
+                <p>Hệ thống quản lý quy mô vừa gồm <b>6 ngăn chứa</b> (cột bên trái), giao diện tối ưu hóa cho quản lý tiêu chuẩn[cite: 1].</p>
             </div>
-            <a href="25FN.html" class="btn">Truy Cập Tủ 36-TTB25 &rarr;</a>
+            <a href="25FN.html" class="btn tho">Truy Cập Tủ 36-TTB25 &rarr;</a>
         </div>
 
         <!-- Tủ TTB23 (Mới) -->
-        <div class="card">
+        <div class="card tho">
             <div>
                 <div class="card-icon">🌡️</div>
                 <h2>Tủ Lạnh 36-TTB23</h2>
-                <p>Hệ thống phần mềm quản lý kho thô gồm <b>6 ngăn chứa</b> với 4 hàng khay mỗi ngăn.</p>
+                <p>Hệ thống phần mềm quản lý kho thô gồm <b>6 ngăn chứa</b> với 4 hàng khay mỗi ngăn[cite: 1].</p>
             </div>
-            <a href="23FN.html" class="btn">Truy Cập Tủ 36-TTB23 &rarr;</a>
+            <a href="23FN.html" class="btn tho">Truy Cập Tủ 36-TTB23 &rarr;</a>
         </div>
 
         <!-- Tủ TTB236 (Mới) -->
-        <div class="card">
+        <div class="card tho">
             <div>
                 <div class="card-icon">❄️</div>
                 <h2>Tủ Lạnh 36-TTB236</h2>
-                <p>Hệ thống phần mềm quản lý kho thô gồm <b>12 ngăn chứa</b> (6 trái, 6 phải) với 3 hàng khay mỗi ngăn.</p>
+                <p>Hệ thống phần mềm quản lý kho thô gồm <b>12 ngăn chứa</b> (6 trái, 6 phải) với 3 hàng khay mỗi ngăn[cite: 1].</p>
             </div>
-            <a href="236FN.html" class="btn">Truy Cập Tủ 36-TTB236 &rarr;</a>
+            <a href="236FN.html" class="btn tho">Truy Cập Tủ 36-TTB236 &rarr;</a>
+        </div>
+    </div>
+
+    <!-- PHẦN DƯỚI: KHO SẠCH -->
+    <h2 class="section-title kho-sach">✨ Kho Sạch</h2>
+    <div class="grid-container">
+        <!-- Tủ TTB26 (Kho Sạch) -->
+        <div class="card sach">
+            <div>
+                <div class="card-icon">🧪</div>
+                <h2>Tủ Lạnh 36-TTB26</h2>
+                <p>Hệ thống phần mềm quản lý kho sạch gồm <b>6 ngăn chứa</b>, hỗ trợ kiểm soát và quét barcode túi máu sạch.</p>
+            </div>
+            <a href="26KS.html" class="btn sach">Truy Cập Tủ 36-TTB26 &rarr;</a>
+        </div>
+
+        <!-- Tủ TTB236 (Kho Sạch) -->
+        <div class="card sach">
+            <div>
+                <div class="card-icon">❄️</div>
+                <h2>Tủ Lạnh 36-TTB236</h2>
+                <p>Hệ thống phần mềm quản lý kho sạch gồm <b>12 ngăn chứa</b> (6 trái, 6 phải) với 3 hàng khay mỗi ngăn.</p>
+            </div>
+            <a href="236KS.html" class="btn sach">Truy Cập Tủ 36-TTB236 &rarr;</a>
         </div>
     </div>
 
     <footer>
-        <p>&copy; Hệ Thống Phần Mềm Quản Lý Kho Thô - Trung Tâm Máu</p>
+        <p>&copy; Hệ Thống Phần Mềm Quản Lý Kho Máu - Trung Tâm Máu</p>
     </footer>
 
 </body>
