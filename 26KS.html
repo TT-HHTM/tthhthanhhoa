@@ -455,7 +455,6 @@
     </div>
 
     <script>
-        // Cập nhật URL API mới chính xác không bị lỗi CORS
         const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwT0218VgwZNxqx4b8nqf-Y9kvOWrEdpnY6DjNT9wQmW8Bu-VUN9z3rnAuIh_fCXWpE/exec";
 
         const totalNgan = 6;
@@ -470,10 +469,22 @@
             return date.toISOString().slice(0, 10);
         }
 
+        // Đã sửa lại hàm này để lọc sạch lỗi định dạng chuỗi ISO từ Google Sheets
         function formatDateToDisplay(dateString) {
             if (!dateString) return '';
+            
+            // Xử lý cắt chuỗi nếu dữ liệu trả về dạng ISO đầy đủ chứa 'T' hoặc 'Z'
+            if (typeof dateString === 'string' && (dateString.includes('T') || dateString.includes('Z'))) {
+                dateString = dateString.split('T')[0];
+            }
+
             const parts = dateString.split('-');
-            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            if (parts.length === 3) {
+                if (parts[0].length === 4) {
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`; // YYYY-MM-DD sang DD/MM/YYYY
+                }
+                return `${parts[0]}/${parts[1]}/${parts[2]}`; // DD-MM-YYYY giữ nguyên trật tự hiển thị
+            }
             return dateString;
         }
 
@@ -719,7 +730,6 @@
             updateStats();
         }
 
-        // Quét barcode thêm túi vào ngăn và tự động đồng bộ lấy thông tin từ Google Sheets
         document.getElementById('quickAddForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const nganId = document.getElementById('selectNgan').value;
@@ -728,7 +738,6 @@
 
             if (!barcodeTui) return;
 
-            // Kiểm tra trùng lặp trong kho sạch
             for (let n in inventory) {
                 for (let r in inventory[n].rows) {
                     if (inventory[n].rows[r].items.some(item => item.barcode.toLowerCase() === barcodeTui.toLowerCase())) {
@@ -739,7 +748,6 @@
                 }
             }
 
-            // Thêm tạm vào giao diện trước với trạng thái Chưa rõ
             inventory[nganId].rows[hangId].items.push({
                 barcode: barcodeTui,
                 nhom: 'Chưa rõ',
@@ -751,7 +759,6 @@
             document.getElementById('barcodeTui').value = '';
             renderView();
 
-            // Tự động gọi API lấy thông tin từ Google Sheets ngay khi quét
             const currentItemIndex = inventory[nganId].rows[hangId].items.length - 1;
             try {
                 const response = await fetch(`${GOOGLE_SCRIPT_WEBAPP_URL}?action=getBloodInfo&barcode=${encodeURIComponent(barcodeTui)}`);
@@ -775,7 +782,6 @@
             document.getElementById('barcodeTui').focus();
         });
 
-        // Quét barcode xuất kho nhanh
         document.getElementById('quickCheckoutForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const barcodeOut = document.getElementById('barcodeCheckout').value.trim().toLowerCase();
@@ -831,7 +837,6 @@
             document.getElementById('barcodeCheckout').focus();
         });
 
-        // Cập nhật toàn bộ dữ liệu từ Google Sheets
         async function fetchAndUpdateAllData() {
             let pendingItems = [];
             for (let n in inventory) {
