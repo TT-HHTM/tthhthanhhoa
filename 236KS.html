@@ -179,7 +179,7 @@
             border-left: 5px solid var(--primary-color);
         }
 
-        .btn-clear-ngan {
+        .btn-checkout-ngan {
             background-color: #d32f2f;
             color: white;
             padding: 3px 8px;
@@ -188,6 +188,9 @@
             border-radius: 4px;
             cursor: pointer;
             margin-left: 8px;
+        }
+        .btn-checkout-ngan:hover {
+            background-color: #b71c1c;
         }
 
         .row-tray {
@@ -473,11 +476,9 @@
             return date.toISOString().slice(0, 10);
         }
 
-        // Đã sửa lại hàm xử lý triệt để lỗi định dạng chuỗi T/Z thành ngày tháng chuẩn VN (dd/MM/yyyy)
         function formatDateToDisplay(dateString) {
             if (!dateString) return '';
             
-            // Xử lý nếu chuỗi chứa định dạng ISO (ví dụ: 2026-10-31T17:00:00.000Z)
             if (typeof dateString === 'string') {
                 if (dateString.includes('T') || dateString.includes('Z')) {
                     const parsedDate = new Date(dateString);
@@ -722,7 +723,7 @@
                 <div class="compartment-header">
                     <div>
                         <span>NGĂN ${i}</span>
-                        <button class="btn-clear-ngan" title="Xóa toàn bộ dữ liệu" onclick="clearCompartmentData(${i})">🗑️ Xóa Ngăn</button>
+                        <button class="btn-checkout-ngan" title="Xuất kho toàn bộ ngăn" onclick="checkoutCompartment(${i})">🚀 Xuất Kho Ngăn</button>
                     </div>
                     <small>Tổng số: <b>${totalItemsInNgan}</b> túi</small>
                 </div>
@@ -858,70 +859,125 @@
             document.getElementById('barcodeCheckout').focus();
         });
 
-        async function fetchAndUpdateAllData() {
-            let pendingItems = [];
-            for (let n in inventory) {
-                for (let r in inventory[n].rows) {
-                    inventory[n].rows[r].items.forEach((item, index) => {
-                        if (item.nhom === 'Chưa rõ') {
-                            pendingItems.push({ ngan: n, hang: r, index: index, barcode: item.barcode });
-                        }
+        // Hàm xử lý khi bấm nút "Xuất Kho Ngăn"
+        async function checkoutCompartment(nganId) {
+            let allItemsInCompartment = [];
+            for (let r = 1; r <= totalRows; r++) {
+                const rowData = inventory[nganId].rows[r];
+                if (rowData && rowData.items.length > 0) {
+                    rowData.items.forEach(item => {
+                        allItemsInCompartment.push(item);
                     });
                 }
             }
 
-            if (pendingItems.length === 0) {
-                alert('Không có túi máu nào cần cập nhật thông tin!');
+            if (allItemsInCompartment.length === 0) {
+                alert(`NGĂN ${nganId} hiện đang trống, không có túi máu để xuất kho!`);
                 return;
             }
 
-            let updatedCount = 0;
-            for (let p of pendingItems) {
-                try {
-                    const response = await fetch(`${GOOGLE_SCRIPT_WEBAPP_URL}?action=getBloodInfo&barcode=${encodeURIComponent(p.barcode)}`);
-                    const resData = await response.json();
+            if (!confirm(`Bạn có chắc chắn muốn xuất kho toàn bộ ${allItemsInCompartment.length} túi máu trong NGĂN ${nganId}?`)) {
+                return;
+            }
 
-                    if (resData.status === 'success') {
-                        const info = resData.data;
-                        inventory[p.ngan].rows[p.hang].items[p.index] = {
-                            barcode: p.barcode,
-                            nhom: info.nhomMau,
-                            rh: info.rh,
-                            dungTich: info.theTich,
-                            hanSuDung: info.hanSuDung
-                        };
-                        updatedCount++;
-                    }
+            let successCount = 0;
+            for (let item of allItemsInCompartment) {
+                const checkoutData = {
+                    action: "checkout",
+                    barcode: item.barcode,
+                    nhom: item.nhom,
+                    rh: item.rh,
+                    dungTich: item.dungTich,
+                    hanSuDung: item.hanSuDung
+                };
+
+                try {
+                    await fetch(GOOGLE_SCRIPT_WEBAPP_URL, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify(checkoutData)
+                    });
+                    successCount++;
                 } catch (err) {
-                    console.error(`Lỗi khi lấy thông tin barcode ${p.barcode}:`, err);
+                    console.error("Lỗi xuất kho túi:", item.barcode, err);
                 }
             }
 
+            // Xóa sạch dữ liệu các hàng trong ngăn sau khi xuất thành công
+            inventory[nganId] = {
+                rows: { 
+                    1: { barcodeKhay: '', items: [] }, 
+                    2: { barcodeKhay: '', items: [] }, 
+                    3: { barcodeKhay: '', items: [] },
+                    4: { barcodeKhay: '', items: [] } 
+                }
+            };
+            
             renderView();
-            alert(`Đã tự động cập nhật thành công thông tin cho ${updatedCount} / ${pendingItems.length} túi máu!`);
+            alert(`✅ Đã xuất kho thành công ${successCount}/${allItemsInCompartment.length} túi máu từ NGĂN ${nganId} vào sheet XUAT_KHO!`);
+        }
+
+        // Chức năng: Xuất kho tất cả túi trong tủ và xóa dữ liệu
+        async function checkoutAllCabinet() {
+            let allItemsInCabinet = [];
+            for (let n = 1; n <= totalNgan; n++) {
+                for (let r = 1; r <= totalRows; r++) {
+                    const rowData = inventory[n].rows[r];
+                    if (rowData && rowData.items.length > 0) {
+                        rowData.items.forEach(item => {
+                            allItemsInCabinet.push(item);
+                        });
+                    }
+                }
+            }
+
+            if (allItemsInCabinet.length === 0) {
+                alert('Tủ kho sạch hiện đang trống, không có túi máu nào để xuất kho!');
+                return;
+            }
+
+            if (!confirm(`⚠️ Bạn có chắc chắn muốn xuất kho TOÀN BỘ ${allItemsInCabinet.length} túi máu trong tủ vào sheet XUAT_KHO và làm sạch tủ không?`)) {
+                return;
+            }
+
+            let successCount = 0;
+            for (let item of allItemsInCabinet) {
+                const checkoutData = {
+                    action: "checkout",
+                    barcode: item.barcode,
+                    nhom: item.nhom,
+                    rh: item.rh,
+                    dungTich: item.dungTich,
+                    hanSuDung: item.hanSuDung
+                };
+
+                try {
+                    await fetch(GOOGLE_SCRIPT_WEBAPP_URL, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify(checkoutData)
+                    });
+                    successCount++;
+                } catch (err) {
+                    console.error("Lỗi xuất kho túi:", item.barcode, err);
+                }
+            }
+
+            // Xóa sạch toàn bộ dữ liệu trong tủ
+            initInventory();
+            renderView();
+            alert(`🚀 Đã xuất kho thành công ${successCount}/${allItemsInCabinet.length} túi máu từ toàn bộ tủ vào sheet XUAT_KHO!`);
         }
 
         document.querySelector('.sidebar .card').insertAdjacentHTML('afterbegin', `
-            <button class="btn-info" style="background-color: #ff8f00;" onclick="fetchAndUpdateAllData()">🔄 Cập Nhật Dữ Liệu Từ Sheets</button>
+            <button class="btn-info" style="background-color: #d32f2f;" onclick="checkoutAllCabinet()">🚀 Xuất kho tất cả túi trong tủ</button>
         `);
 
         function removeItem(nganId, hangId, index) {
             if (confirm('Bạn có chắc muốn xóa túi máu này khỏi kho sạch?')) {
                 inventory[nganId].rows[hangId].items.splice(index, 1);
-                renderView();
-            }
-        }
-
-        function clearCompartmentData(nganId) {
-            if (confirm(`Xóa toàn bộ túi máu trong NGĂN ${nganId}?`)) {
-                inventory[nganId] = {
-                    rows: { 
-                        1: { barcodeKhay: '', items: [] }, 
-                        2: { barcodeKhay: '', items: [] }, 
-                        3: { barcodeKhay: '', items: [] },
-                        4: { barcodeKhay: '', items: [] } 
-                    }
-                };
                 renderView();
             }
         }
