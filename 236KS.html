@@ -670,7 +670,7 @@
                             <td>
                                 <button class="btn-edit-single" onclick="openEditItemModal(${i}, ${r}, ${index})">✏️</button>
                                 <button class="btn-move-single" onclick="openMoveItemModal(${i}, ${r}, ${index})">🔄</button>
-                                <button class="btn-danger" onclick="removeItem(${i}, ${r}, ${index})">🗑️️</button>
+                                <button class="btn-danger" onclick="removeItem(${i}, ${r}, ${index})">🗑</button>
                             </td>
                         </tr>
                     `;
@@ -681,7 +681,7 @@
                         <div class="row-title">
                             <span>
                                 HÀNG KHAY ${r} (Mã: <b>${rowData.barcodeKhay || 'Trống'}</b>)
-                                <button class="btn-edit-tray" onclick="editBarcodeKhay(${i}, ${r})">✏️️ Khay</button>
+                                <button class="btn-edit-tray" onclick="editBarcodeKhay(${i}, ${r})">✏ Khay</button>
                                 <button class="btn-move-tray" onclick="openMoveRowModal(${i}, ${r})">🔄 Chuyển</button>
                             </span>
                             <span>SL: ${rowData.items.length}</span>
@@ -779,11 +779,13 @@
                     let items = inventory[n].rows[r].items;
                     for (let i = 0; i < items.length; i++) {
                         let sheetInfo = await fetchBloodInfoFromSheet(items[i].barcode);
+                        console.log(`Kết quả Sheet cho mã [${items[i].barcode}]:`, sheetInfo);
                         if (sheetInfo) {
-                            items[i].nhom = sheetInfo.nhomMau;
-                            items[i].rh = sheetInfo.rh;
-                            items[i].dungTich = sheetInfo.theTich;
-                            items[i].hanSuDung = sheetInfo.hanSuDung;
+                            // Hỗ trợ linh hoạt cả 2 trường hợp tên thuộc tính trả về từ Apps Script
+                            items[i].nhom = sheetInfo.nhomMau || sheetInfo.nhom || '';
+                            items[i].rh = sheetInfo.rh || '';
+                            items[i].dungTich = sheetInfo.theTich || sheetInfo.dungTich || '';
+                            items[i].hanSuDung = sheetInfo.hanSuDung || '';
                             updatedCount++;
                         }
                     }
@@ -872,8 +874,16 @@
                 for (let r in inventory[n].rows) {
                     inventory[n].rows[r].items.forEach(item => {
                         if (!item.nhom || !item.dungTich) return; // Bỏ qua túi chưa đồng bộ thông tin
-                        const key = `${item.nhom} ${item.rh || 'Rh+'}`;
-                        if (stats[key] && stats[key][item.dungTich] !== undefined) stats[key][item.dungTich]++;
+                        
+                        // Chuẩn hóa nhóm máu và thể tích để khớp với bảng thống kê
+                        const cleanNhom = String(item.nhom).trim();
+                        const cleanRh = String(item.rh || 'Rh+').trim();
+                        const cleanDungTich = parseInt(item.dungTich, 10);
+
+                        const key = `${cleanNhom} ${cleanRh}`;
+                        if (stats[key] && stats[key][cleanDungTich] !== undefined) {
+                            stats[key][cleanDungTich]++;
+                        }
                     });
                 }
             }
