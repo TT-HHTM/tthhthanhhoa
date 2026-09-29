@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Kho Sạch - 36-TTB26</title>
+    <title>Quản Lý Kho Sạch - TTB36-TTB236</title>
     <!-- Thư viện SheetJS để xuất/nhập file Excel (.xlsx / .xls) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
@@ -133,6 +133,13 @@
         }
         .btn-clear-all:hover {
             background-color: #e53935;
+        }
+
+        /* Chia giao diện danh sách ngăn thành 2 cột: Trái (1-6) và Phải (7-12) */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
 
         .column-container {
@@ -297,13 +304,13 @@
 <body>
 
     <div class="header">
-        <a href="index.html" class="btn-back-menu">⬅ TRỞ VỀ MENU</a>
-        <h1>HỆ THỐNG PHẦN MỀM QUẢN LÝ KHO SẠCH (36-TTB26)</h1>
+        <a href="index.html" class="btn-back-menu">⬅ TRỜ VỀ MENU</a>
+        <h1>HỆ THỐNG PHẦN MỀM QUẢN LÝ KHO SẠCH (36-TTB236)</h1>
         <div id="syncStatus" class="sync-status">🟢 Đã đồng bộ với Google Sheets</div>
     </div>
 
     <div class="container">
-        <!-- Cột trái: Form nhập & Các ngăn từ 1 đến 6 -->
+        <!-- Cột trái: Form nhập & Các ngăn chia 2 bên -->
         <div class="main-content">
             
             <!-- Form Quét Nhanh -->
@@ -347,9 +354,14 @@
                 </form>
             </div>
 
-            <!-- Khung hiển thị các ngăn từ 1 đến 6 -->
-            <div class="column-container" id="nganContainer">
-                <div class="column-title">DANH SÁCH NGĂN 1 - 6</div>
+            <!-- Khung hiển thị các ngăn chia 2 cột: Ngăn 1-6 bên trái, Ngăn 7-12 bên phải -->
+            <div class="grid-layout">
+                <div class="column-container" id="nganContainerLeft">
+                    <div class="column-title">NGĂN 1 - 6 (BÊN TRÁI)</div>
+                </div>
+                <div class="column-container" id="nganContainerRight">
+                    <div class="column-title">NGĂN 7 - 12 (BÊN PHẢI)</div>
+                </div>
             </div>
         </div>
 
@@ -460,11 +472,11 @@
     </div>
 
     <script>
-        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwcJis1PL8g5saYIBWPKUQ-oljCQ3N_YCIh8Ae5372FADBjHnGihczqyAYS7ofgy4mxyg/exec";
+        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw4cvGyykfX41Du9oju18rTJiGtL_9WE-4fBNukh9P-XuTaMwQt8LM520v_vyNSijZMcg/exec";
 
-        const totalNgan = 6; 
+        const totalNgan = 12;
         const totalRows = 4;
-        let inventory = JSON.parse(localStorage.getItem('blood_inventory_clean_36_ttb26')) || {};
+        let inventory = JSON.parse(localStorage.getItem('blood_inventory_clean_36_ttb236')) || {};
         let isSyncing = false;
 
         function updateSyncStatus(msg, isError = false) {
@@ -477,6 +489,7 @@
 
         function formatDateToDisplay(dateString) {
             if (!dateString) return '';
+            
             if (typeof dateString === 'string') {
                 if (dateString.includes('T') || dateString.includes('Z')) {
                     const parsedDate = new Date(dateString);
@@ -489,6 +502,7 @@
                     dateString = dateString.split('T')[0];
                 }
             }
+
             const parts = dateString.split('-');
             if (parts.length === 3) {
                 if (parts[0].length === 4) {
@@ -811,12 +825,19 @@
         }
 
         function renderView(shouldSyncCloud = true) {
-            const nganContainer = document.getElementById('nganContainer');
-            nganContainer.innerHTML = '<div class="column-title">DANH SÁCH NGĂN 1 - 6</div>';
+            const nganContainerLeft = document.getElementById('nganContainerLeft');
+            const nganContainerRight = document.getElementById('nganContainerRight');
+            
+            nganContainerLeft.innerHTML = '<div class="column-title">NGĂN 1 - 6 (BÊN TRÁI)</div>';
+            nganContainerRight.innerHTML = '<div class="column-title">NGĂN 7 - 12 (BÊN PHẢI)</div>';
 
             for (let i = 1; i <= totalNgan; i++) {
                 const box = createCompartmentBox(i);
-                nganContainer.appendChild(box);
+                if (i <= 6) {
+                    nganContainerLeft.appendChild(box);
+                } else {
+                    nganContainerRight.appendChild(box);
+                }
             }
 
             saveData();
@@ -1093,8 +1114,8 @@
 
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "KHO_SACH_36-TTB26");
-            XLSX.writeFile(workbook, `KHO_SACH_36-TTB26_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "KHO_SACH_36-TTB236");
+            XLSX.writeFile(workbook, `KHO_SACH_36-TTB236_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function importFromExcel(event) {
@@ -1222,7 +1243,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('blood_inventory_clean_36_ttb26', JSON.stringify(inventory));
+            localStorage.setItem('blood_inventory_clean_36_ttb236', JSON.stringify(inventory));
         }
 
         // Tải dữ liệu từ Google Sheet lần đầu khi mở web
