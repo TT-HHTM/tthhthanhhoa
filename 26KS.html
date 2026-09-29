@@ -285,13 +285,21 @@
             width: 340px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
+
+        .sync-status {
+            font-size: 0.8em;
+            margin-top: 5px;
+            color: #ffffff;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <a href="index.html" class="btn-back-menu">⬅ TRỞ VỀ MENU</a>
+        <a href="index.html" class="btn-back-menu">⬅ TRỜ VỀ MENU</a>
         <h1>HỆ THỐNG PHẦN MỀM QUẢN LÝ KHO SẠCH (36-TTB26)</h1>
+        <div id="syncStatus" class="sync-status">🟢 Đã đồng bộ với Google Sheets</div>
     </div>
 
     <div class="container">
@@ -349,6 +357,8 @@
         <div class="sidebar">
             <div class="card">
                 <h3>Quản Lý Dữ Liệu Kho Sạch</h3>
+                <button class="btn-info" style="background-color: #d32f2f; margin-bottom: 8px;" onclick="checkoutAllCabinet()">🚀 Xuất kho tất cả túi trong tủ</button>
+                <button class="btn-info" onclick="loadFromCloud()">🔄 Tải Dữ Liệu Từ Google Sheet</button>
                 <button class="btn-success" onclick="exportToExcel()">📊 Xuất Excel Kho Sạch</button>
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="importFromExcel(event)">
                 <button class="btn-info" onclick="document.getElementById('excelFileInput').click()">📥 Nhập File Excel</button>
@@ -450,23 +460,23 @@
     </div>
 
     <script>
-        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw4cvGyykfX41Du9oju18rTJiGtL_9WE-4fBNukh9P-XuTaMwQt8LM520v_vyNSijZMcg/exec";
+        const GOOGLE_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwcJis1PL8g5saYIBWPKUQ-oljCQ3N_YCIh8Ae5372FADBjHnGihczqyAYS7ofgy4mxyg/exec";
 
         const totalNgan = 6; 
         const totalRows = 4;
         let inventory = JSON.parse(localStorage.getItem('blood_inventory_clean_36_ttb26')) || {};
+        let isSyncing = false;
 
-        function addDaysToDate(dateString, days) {
-            if (!dateString) return '';
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) return '';
-            date.setDate(date.getDate() + days);
-            return date.toISOString().slice(0, 10);
+        function updateSyncStatus(msg, isError = false) {
+            const el = document.getElementById('syncStatus');
+            if (el) {
+                el.textContent = msg;
+                el.style.color = isError ? '#ffcdd2' : '#ffffff';
+            }
         }
 
         function formatDateToDisplay(dateString) {
             if (!dateString) return '';
-            
             if (typeof dateString === 'string') {
                 if (dateString.includes('T') || dateString.includes('Z')) {
                     const parsedDate = new Date(dateString);
@@ -479,7 +489,6 @@
                     dateString = dateString.split('T')[0];
                 }
             }
-
             const parts = dateString.split('-');
             if (parts.length === 3) {
                 if (parts[0].length === 4) {
@@ -542,6 +551,88 @@
             });
         }
         populateNganSelects();
+
+        // ==========================================
+        // CÁC HÀM ĐỒNG BỘ GOOGLE SHEETS DÙNG CHUNG[cite: 1, 2]
+        // ==========================================
+        async function syncToCloud() {
+            updateSyncStatus('🟡 Đang đồng bộ lên Cloud...');
+            let flattenList = [];
+            for (let n = 1; n <= totalNgan; n++) {
+                for (let r = 1; r <= totalRows; r++) {
+                    const rowData = inventory[n].rows[r];
+                    if (rowData && rowData.items.length > 0) {
+                        rowData.items.forEach(item => {
+                            flattenList.push({
+                                ngan: `NGĂN ${n}`,
+                                hangKhay: `HÀNG ${r}`,
+                                barcodeKhay: rowData.barcodeKhay || '',
+                                barcodeTui: item.barcode,
+                                nhomMau: item.nhom,
+                                rh: item.rh,
+                                theTich: item.dungTich,
+                                hanSuDung: item.hanSuDung
+                            });
+                        });
+                    }
+                }
+            }
+
+            try {
+                await fetch(GOOGLE_SCRIPT_WEBAPP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'syncKhoSach',
+                        data: flattenList
+                    })
+                });
+                updateSyncStatus('🟢 Đã đồng bộ với Google Sheets');
+            } catch (err) {
+                console.error("Lỗi đồng bộ Cloud:", err);
+                updateSyncStatus('🔴 Lỗi kết nối Google Sheets', true);
+            }
+        }
+
+        async function loadFromCloud() {
+            if (isSyncing) return;
+            isSyncing = true;
+            updateSyncStatus('🔄 Đang tải dữ liệu mới...');
+            try {
+                const res = await fetch(`${GOOGLE_SCRIPT_WEBAPP_URL}?action=getKhoSach`);
+                const resData = await res.json();
+
+                if (resData.status === 'success' && Array.isArray(resData.data)) {
+                    initInventory();
+                    resData.data.forEach(item => {
+                        const nganMatch = String(item.ngan).match(/\d+/);
+                        const hangMatch = String(item.hangKhay).match(/\d+/);
+                        if (nganMatch && hangMatch) {
+                            const nId = parseInt(nganMatch[0], 10);
+                            const hId = parseInt(hangMatch[0], 10);
+                            if (inventory[nId] && inventory[nId].rows[hId]) {
+                                if (item.barcodeKhay) inventory[nId].rows[hId].barcodeKhay = item.barcodeKhay;
+                                inventory[nId].rows[hId].items.push({
+                                    barcode: item.barcodeTui,
+                                    nhom: item.nhomMau || 'O',
+                                    rh: item.rh || 'Rh+',
+                                    dungTich: item.theTich || '250',
+                                    hanSuDung: item.hanSuDung || ''
+                                });
+                            }
+                        }
+                    });
+                    renderView(false); // Render giao diện mà không đẩy ngược lại cloud
+                    updateSyncStatus('🟢 Đã đồng bộ với Google Sheets');
+                }
+            } catch (err) {
+                console.error("Lỗi tải dữ liệu Cloud:", err);
+                updateSyncStatus('🔴 Lỗi tải dữ liệu', true);
+            } finally {
+                isSyncing = false;
+            }
+        }
 
         function editBarcodeKhay(nganId, hangId) {
             const currentBarcode = inventory[nganId].rows[hangId].barcodeKhay || '';
@@ -640,7 +731,6 @@
             currentItem.dungTich = document.getElementById('editDungTich').value;
             currentItem.hanSuDung = document.getElementById('editHanSuDung').value;
 
-            alert('Cập nhật thành công!');
             closeEditModal();
             renderView();
         });
@@ -720,7 +810,7 @@
             return box;
         }
 
-        function renderView() {
+        function renderView(shouldSyncCloud = true) {
             const nganContainer = document.getElementById('nganContainer');
             nganContainer.innerHTML = '<div class="column-title">DANH SÁCH NGĂN 1 - 6</div>';
 
@@ -731,6 +821,10 @@
 
             saveData();
             updateStats();
+
+            if (shouldSyncCloud) {
+                syncToCloud();
+            }
         }
 
         document.getElementById('quickAddForm').addEventListener('submit', async function(e) {
@@ -816,7 +910,9 @@
                     nhom: foundItem.nhom,
                     rh: foundItem.rh,
                     dungTich: foundItem.dungTich,
-                    hanSuDung: foundItem.hanSuDung
+                    hanSuDung: foundItem.hanSuDung,
+                    ngan: `NGĂN ${targetNgan}`,
+                    hangKhay: `HÀNG ${targetHang}`
                 };
 
                 try {
@@ -846,7 +942,7 @@
                 const rowData = inventory[nganId].rows[r];
                 if (rowData && rowData.items.length > 0) {
                     rowData.items.forEach(item => {
-                        allItemsInCompartment.push(item);
+                        allItemsInCompartment.push({ ...item, hangKhay: `HÀNG ${r}` });
                     });
                 }
             }
@@ -868,7 +964,9 @@
                     nhom: item.nhom,
                     rh: item.rh,
                     dungTich: item.dungTich,
-                    hanSuDung: item.hanSuDung
+                    hanSuDung: item.hanSuDung,
+                    ngan: `NGĂN ${nganId}`,
+                    hangKhay: item.hangKhay
                 };
 
                 try {
@@ -904,7 +1002,7 @@
                     const rowData = inventory[n].rows[r];
                     if (rowData && rowData.items.length > 0) {
                         rowData.items.forEach(item => {
-                            allItemsInCabinet.push(item);
+                            allItemsInCabinet.push({ ...item, ngan: `NGĂN ${n}`, hangKhay: `HÀNG ${r}` });
                         });
                     }
                 }
@@ -927,7 +1025,9 @@
                     nhom: item.nhom,
                     rh: item.rh,
                     dungTich: item.dungTich,
-                    hanSuDung: item.hanSuDung
+                    hanSuDung: item.hanSuDung,
+                    ngan: item.ngan,
+                    hangKhay: item.hangKhay
                 };
 
                 try {
@@ -947,10 +1047,6 @@
             renderView();
             alert(`🚀 Đã xuất kho thành công ${successCount}/${allItemsInCabinet.length} túi máu từ toàn bộ tủ vào sheet XUAT_KHO!`);
         }
-
-        document.querySelector('.sidebar .card').insertAdjacentHTML('afterbegin', `
-            <button class="btn-info" style="background-color: #d32f2f;" onclick="checkoutAllCabinet()">🚀 Xuất kho tất cả túi trong tủ</button>
-        `);
 
         function removeItem(nganId, hangId, index) {
             if (confirm('Bạn có chắc muốn xóa túi máu này khỏi kho sạch?')) {
@@ -1129,7 +1225,13 @@
             localStorage.setItem('blood_inventory_clean_36_ttb26', JSON.stringify(inventory));
         }
 
-        renderView();
+        // Tải dữ liệu từ Google Sheet lần đầu khi mở web
+        loadFromCloud();
+
+        // Tự động quét lấy dữ liệu mới từ Google Sheet mỗi 5 giây
+        setInterval(() => {
+            loadFromCloud();
+        }, 5000);
     </script>
 </body>
 </html>
