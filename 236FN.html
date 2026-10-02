@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Kho Chứa Máu - TTB236</title>
+    <title>Quản Lý Kho Chứa Máu - TTB236 (Realtime Firestore)</title>
     <!-- Thư viện SheetJS để xuất/nhập file Excel (.xlsx / .xls) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
@@ -305,6 +305,13 @@
             width: 350px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
+
+        .sync-status {
+            font-size: 0.8em;
+            margin-top: 5px;
+            color: #ffffff;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -312,6 +319,7 @@
     <div class="header">
         <a href="index.html" class="btn-back-menu">⬅ TRỞ VỀ MENU</a>
         <h1>HỆ THỐNG PHẦN MỀM QUẢN LÝ KHO THÔ (36-TTB236)</h1>
+        <div id="syncStatus" class="sync-status">🟢 Đang kết nối Firestore Realtime...</div>
     </div>
 
     <div class="container">
@@ -498,14 +506,49 @@
         </div>
     </div>
 
-    <script>
-        // URL Web App mới đã được cập nhật
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydGdn4l_KvTboqTnMnDEhTk305GH6-gjwqHGos1K9eYR1mcbY4vbTOkIOb2oX0av9NOw/exec";[cite: 3]
+    <!-- Nhúng Firebase SDK v10 (Modular) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBQQgEMErGty3OE0rFJPe-_XlNf3oW5kOA",
+            authDomain: "kho-sach-ec481.firebaseapp.com",
+            projectId: "kho-sach-ec481",
+            storageBucket: "kho-sach-ec481.firebasestorage.app",
+            messagingSenderId: "806528329299",
+            appId: "1:806528329299:web:3a5ac5b49dd990c40008a6",
+            measurementId: "G-738WXNLHMP"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const docRef = doc(db, "kho_tho", "data_36_ttb236"); // Document riêng biệt cho kho thô
+
+        // URL Web App Google Script
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydGdn4l_KvTboqTnMnDEhTk305GH6-gjwqHGos1K9eYR1mcbY4vbTOkIOb2oX0av9NOw/exec";
 
         const totalNgan = 12;
-        const totalRows = 3; 
-        let inventory = JSON.parse(localStorage.getItem('blood_inventory_v5')) || {};
+        const totalRows = 3;
+        let inventory = {};
+        let isRemoteUpdate = false;
 
+        function initInventory() {
+            let temp = {};
+            for (let i = 1; i <= totalNgan; i++) {
+                temp[i] = {
+                    rows: {
+                        1: { barcodeKhay: '', items: [] },
+                        2: { barcodeKhay: '', items: [] },
+                        3: { barcodeKhay: '', items: [] }
+                    }
+                };
+            }
+            return temp;
+        }
+        inventory = initInventory();
+
+        // Đặt ngày nhập mặc định là hôm nay và tự động tính HSD (+42 ngày)
         const todayStr = new Date().toISOString().split('T')[0];
         document.getElementById('ngayNhap').value = todayStr;
 
@@ -533,37 +576,6 @@
             document.getElementById('editHanSuDung').value = addDays(this.value, 42);
         });
 
-        function initInventory() {
-            inventory = {};
-            for (let i = 1; i <= totalNgan; i++) {
-                inventory[i] = {
-                    rows: {
-                        1: { barcodeKhay: '', items: [] },
-                        2: { barcodeKhay: '', items: [] },
-                        3: { barcodeKhay: '', items: [] }
-                    }
-                };
-            }
-        }
-        
-        if (Object.keys(inventory).length === 0) {
-            initInventory();
-        } else {
-            for (let i = 1; i <= totalNgan; i++) {
-                if (!inventory[i]) {
-                    inventory[i] = {
-                        rows: {
-                            1: { barcodeKhay: '', items: [] },
-                            2: { barcodeKhay: '', items: [] },
-                            3: { barcodeKhay: '', items: [] }
-                        }
-                    };
-                } else if (inventory[i].rows[4]) {
-                    delete inventory[i].rows[4];
-                }
-            }
-        }
-
         const selectNgan = document.getElementById('selectNgan');
         const modalToNgan = document.getElementById('modalToNgan');
 
@@ -580,7 +592,48 @@
         }
         populateNganSelects();
 
-        function editBarcodeKhay(nganId, hangId) {
+        function updateSyncStatus(msg, isError = false) {
+            const el = document.getElementById('syncStatus');
+            if (el) {
+                el.textContent = msg;
+                el.style.color = isError ? '#ffcdd2' : '#ffffff';
+            }
+        }
+
+        // Lắng nghe dữ liệu Realtime từ Firestore
+        onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const cloudData = docSnap.data().inventory;
+                if (cloudData) {
+                    isRemoteUpdate = true;
+                    inventory = cloudData;
+                    renderView(false);
+                    updateSyncStatus('🟢 Đã đồng bộ Realtime Firestore');
+                }
+            } else {
+                saveToCloud();
+            }
+        }, (error) => {
+            console.error("Lỗi Firestore Realtime:", error);
+            updateSyncStatus('🔴 Lỗi kết nối Realtime Firestore', true);
+        });
+
+        async function saveToCloud() {
+            if (isRemoteUpdate) {
+                isRemoteUpdate = false;
+                return;
+            }
+            try {
+                updateSyncStatus('🟡 Đang lưu lên Firestore...');
+                await setDoc(docRef, { inventory: inventory });
+                updateSyncStatus('🟢 Đã đồng bộ Realtime Firestore');
+            } catch (err) {
+                console.error("Lỗi lưu Cloud:", err);
+                updateSyncStatus('🔴 Lỗi ghi dữ liệu Firestore', true);
+            }
+        }
+
+        window.editBarcodeKhay = function(nganId, hangId) {
             const currentBarcode = inventory[nganId].rows[hangId].barcodeKhay || '';
             const newBarcode = prompt(`Nhập mã Barcode khay mới cho Ngăn ${nganId} - Hàng ${hangId}:`, currentBarcode);
             
@@ -595,7 +648,7 @@
         let currentSrcHang = null;
         let currentSrcIndex = null;
 
-        function openMoveRowModal(nganId, hangId) {
+        window.openMoveRowModal = function(nganId, hangId) {
             currentMoveType = 'ROW';
             currentSrcNgan = nganId;
             currentSrcHang = hangId;
@@ -603,7 +656,7 @@
             document.getElementById('moveModal').style.display = 'flex';
         }
 
-        function openMoveItemModal(nganId, hangId, index) {
+        window.openMoveItemModal = function(nganId, hangId, index) {
             currentMoveType = 'ITEM';
             currentSrcNgan = nganId;
             currentSrcHang = hangId;
@@ -612,7 +665,7 @@
             document.getElementById('moveModal').style.display = 'flex';
         }
 
-        function closeModal() {
+        window.closeModal = function() {
             document.getElementById('moveModal').style.display = 'none';
         }
 
@@ -654,7 +707,7 @@
         let editTargetHang = null;
         let editTargetIndex = null;
 
-        function openEditItemModal(nganId, hangId, index) {
+        window.openEditItemModal = function(nganId, hangId, index) {
             editTargetNgan = nganId;
             editTargetHang = hangId;
             editTargetIndex = index;
@@ -670,7 +723,7 @@
             document.getElementById('editItemModal').style.display = 'flex';
         }
 
-        function closeEditModal() {
+        window.closeEditModal = function() {
             document.getElementById('editItemModal').style.display = 'none';
         }
 
@@ -736,7 +789,7 @@
                             <td>${formatDateDisplay(item.ngayNhap)}</td>
                             <td>${formatDateDisplay(item.hanSuDung)}</td>
                             <td>
-                                <button class="btn-edit-single" title="Sửa thông tin" onclick="openEditItemModal(${i}, ${r}, ${index})">✏️</button>
+                                <button class="btn-edit-single" title="Sửa thông tin" onclick="openEditItemModal(${i}, ${r}, ${index})">✏️️</button>
                                 <button class="btn-move-single" title="Chuyển vị trí" onclick="openMoveItemModal(${i}, ${r}, ${index})">🔄</button>
                                 <button class="btn-danger" title="Xóa" onclick="removeItem(${i}, ${r}, ${index})">🗑️</button>
                             </td>
@@ -788,24 +841,23 @@
             return box;
         }
 
-        function renderView() {
+        function renderView(shouldSyncCloud = true) {
             const leftCol = document.getElementById('leftColumn');
             const rightCol = document.getElementById('rightColumn');
 
             leftCol.innerHTML = '<div class="column-title">CỘT BÊN TRÁI (NGĂN 1 - 6)</div>';
             rightCol.innerHTML = '<div class="column-title">CỘT BÊN PHẢI (NGĂN 7 - 12)</div>';
 
-            for (let i = 1; i <= totalNgan; i++) {
-                const box = createCompartmentBox(i);
-                if (i <= 6) {
-                    leftCol.appendChild(box);
-                } else {
-                    rightCol.appendChild(box);
-                }
+            for (let i = 1; i <= 6; i++) {
+                leftCol.appendChild(createCompartmentBox(i));
             }
 
-            saveData();
+            for (let i = 7; i <= 12; i++) {
+                rightCol.appendChild(createCompartmentBox(i));
+            }
+
             updateStats();
+            if (shouldSyncCloud) saveToCloud();
         }
 
         document.getElementById('addBloodForm').addEventListener('submit', function(e) {
@@ -845,7 +897,7 @@
             renderView();
         });
 
-        function removeItem(nganId, hangId, index) {
+        window.removeItem = function(nganId, hangId, index) {
             if (confirm('Bạn có chắc chắn muốn xóa túi máu này?')) {
                 inventory[nganId].rows[hangId].items.splice(index, 1);
                 renderView();
@@ -857,17 +909,17 @@
             }
         }
 
-        function clearAllData() {
+        window.clearAllData = function() {
             const confirm1 = confirm("⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA TẤT CẢ dữ liệu kho máu?");
             if (confirm1) {
-                initInventory();
+                inventory = initInventory();
                 renderView();
                 document.getElementById('searchResult').innerHTML = '';
                 alert("Đã xóa toàn bộ dữ liệu thành công!");
             }
         }
 
-        function exportToExcel() {
+        window.exportToExcel = function() {
             let exportData = [];
             let itemsForGoogleSheet = [];
             let sttTong = 1;
@@ -878,7 +930,7 @@
                     rowData.items.forEach((item, index) => {
                         exportData.push({
                             "STT": sttTong,
-                            "Tủ lưu trữ": "TTB236",
+                            "Tủ lưu trữ": "36-TTB236",
                             "Ngăn": `NGĂN ${n}`,
                             "Hàng Khay": `HÀNG ${r}`,
                             "STT Trong Khay": index + 1,
@@ -892,7 +944,7 @@
                         });
 
                         itemsForGoogleSheet.push({
-                            tuLuuTru: "TTB236",
+                            tuLuuTru: "36-TTB236",
                             ngan: `NGĂN ${n}`,
                             hang: `HÀNG ${r}`,
                             sttTrongKhay: index + 1,
@@ -962,7 +1014,7 @@
             return dateStr;
         }
 
-        function importFromExcel(event) {
+        window.importFromExcel = function(event) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -987,7 +1039,7 @@
                         return;
                     }
 
-                    initInventory();
+                    inventory = initInventory();
 
                     let count = 0;
                     jsonData.forEach(row => {
@@ -1015,7 +1067,7 @@
                             const nganId = parseInt(nganMatch[0], 10);
                             const hangId = parseInt(hangMatch[0], 10);
 
-                            if (nganId <= totalNgan && inventory[nganId] && inventory[nganId].rows[hangId]) {
+                            if (inventory[nganId] && inventory[nganId].rows[hangId]) {
                                 inventory[nganId].rows[hangId].barcodeKhay = barcodeKhay;
                                 inventory[nganId].rows[hangId].items.push({
                                     barcode: barcodeTui,
@@ -1043,7 +1095,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function searchBloodBag() {
+        window.searchBloodBag = function() {
             const query = document.getElementById('searchInput').value.trim().toLowerCase();
             const resultDiv = document.getElementById('searchResult');
             
@@ -1085,7 +1137,7 @@
                     <div style="display: flex; gap: 5px; margin-top: 8px;">
                         <button class="btn-edit-single" style="flex:1; padding: 6px;" onclick="openEditItemModal(${foundNgan}, ${foundHang}, ${foundIndex})">✏️ Sửa thông tin</button>
                         <button class="btn-move-tray" style="flex:1; padding: 6px;" onclick="openMoveItemModal(${foundNgan}, ${foundHang}, ${foundIndex})">🔄 Chuyển vị trí</button>
-                        <button class="btn-danger" style="flex:1; padding: 6px;" onclick="removeItem(${foundNgan}, ${foundHang}, ${foundIndex})">🗑️️ Xóa túi này</button>
+                        <button class="btn-danger" style="flex:1; padding: 6px;" onclick="removeItem(${foundNgan}, ${foundHang}, ${foundIndex})">🗑️ Xóa túi này</button>
                     </div>
                 `;
             } else {
@@ -1150,12 +1202,6 @@
                 </tr>
             `;
         }
-
-        function saveData() {
-            localStorage.setItem('blood_inventory_v5', JSON.stringify(inventory));
-        }
-
-        renderView();
     </script>
 </body>
 </html>
