@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Kho Chứa Máu - TTB237 (Realtime Firestore & Google Sheets)</title>
+    <title>Quản Lý Kho Chứa Máu - TTB36-TTB237 (Realtime Firestore & Google Sheets)</title>
     <!-- Thư viện SheetJS để xuất/nhập file Excel (.xlsx / .xls) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
-            --primary-color: #b71c1c;
+            --primary-color: #b71c1c; 
             --secondary-color: #d32f2f;
             --bg-color: #f5f5f5;
             --card-bg: #ffffff;
@@ -23,7 +23,6 @@
             color: #333;
         }
 
-        /* Nút Trở về Menu */
         .btn-back-menu {
             position: absolute;
             top: 25px;
@@ -113,28 +112,14 @@
             background-color: var(--secondary-color);
         }
 
-        .btn-success {
-            background-color: #2e7d32;
-            margin-bottom: 8px;
-        }
-        .btn-success:hover {
-            background-color: #388e3c;
-        }
-
-        .btn-info {
-            background-color: #0288d1;
-            margin-bottom: 8px;
-        }
-        .btn-info:hover {
-            background-color: #0277bd;
-        }
-
-        .btn-clear-all {
-            background-color: #c62828;
-        }
-        .btn-clear-all:hover {
-            background-color: #e53935;
-        }
+        .btn-success { background-color: #2e7d32; margin-bottom: 8px; }
+        .btn-success:hover { background-color: #388e3c; }
+        .btn-info { background-color: #0288d1; margin-bottom: 8px; }
+        .btn-info:hover { background-color: #0277bd; }
+        .btn-sync-sheets { background-color: #ff8f00; margin-bottom: 8px; }
+        .btn-sync-sheets:hover { background-color: #ff6f00; }
+        .btn-clear-all { background-color: #c62828; }
+        .btn-clear-all:hover { background-color: #e53935; }
 
         .grid-layout {
             display: grid;
@@ -179,6 +164,17 @@
             border-left: 5px solid var(--primary-color);
         }
 
+        .btn-checkout-ngan {
+            background-color: #d32f2f;
+            color: white;
+            padding: 3px 8px;
+            font-size: 0.75em;
+            width: auto;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
         .row-tray {
             border: 1px dashed #bbb;
             background-color: #fafafa;
@@ -197,32 +193,14 @@
             align-items: center;
         }
 
-        .btn-edit-tray {
+        .btn-edit-tray, .btn-move-tray, .btn-move-single, .btn-edit-single {
             background-color: #0288d1;
             color: white;
             padding: 2px 6px;
             font-size: 0.75em;
             width: auto;
             border-radius: 3px;
-            margin-left: 4px;
             cursor: pointer;
-        }
-        .btn-edit-tray:hover {
-            background-color: #01579b;
-        }
-
-        .btn-move-tray {
-            background-color: #f57c00;
-            color: white;
-            padding: 2px 6px;
-            font-size: 0.75em;
-            width: auto;
-            border-radius: 3px;
-            margin-left: 4px;
-            cursor: pointer;
-        }
-        .btn-move-tray:hover {
-            background-color: #e65100;
         }
 
         table {
@@ -238,9 +216,7 @@
             text-align: center;
         }
 
-        th {
-            background-color: #f0f0f0;
-        }
+        th { background-color: #f0f0f0; }
 
         .btn-danger {
             background-color: #d32f2f;
@@ -250,28 +226,6 @@
             border-radius: 3px;
         }
 
-        .btn-move-single {
-            background-color: #fb8c00;
-            padding: 2px 5px;
-            font-size: 0.75em;
-            width: auto;
-            border-radius: 3px;
-            margin-right: 2px;
-        }
-
-        .btn-edit-single {
-            background-color: #0288d1;
-            padding: 2px 5px;
-            font-size: 0.75em;
-            width: auto;
-            border-radius: 3px;
-            margin-right: 2px;
-        }
-
-        .stats-table th {
-            background-color: #e0e0e0;
-        }
-
         .search-result {
             margin-top: 10px;
             padding: 10px;
@@ -279,7 +233,6 @@
             border: 1px solid #c8e6c9;
             border-radius: 4px;
         }
-
         .search-result.not-found {
             background-color: #ffebee;
             border-color: #ffcdd2;
@@ -289,10 +242,8 @@
             display: none;
             position: fixed;
             z-index: 999;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
             background-color: rgba(0,0,0,0.5);
             justify-content: center;
             align-items: center;
@@ -322,19 +273,17 @@
     </div>
 
     <div class="container">
-        <!-- Cột trái: Form nhập & Các ngăn -->
         <div class="main-content">
-            
-            <!-- Form Nhập Túi Máu -->
+            <!-- Form Nhập Túi Máu Đầy Đủ Thông Tin -->
             <div class="card">
                 <h3>Nhập Liệu Túi Máu Vào Hàng Khay</h3>
                 <form id="addBloodForm" style="display: grid; grid-template-columns: repeat(9, 1fr) 90px; gap: 8px; align-items: end;">
                     <div class="form-group">
-                        <label>Vị trí Ngăn</label>
+                        <label>Ngăn</label>
                         <select id="selectNgan" required></select>
                     </div>
                     <div class="form-group">
-                        <label>Hàng Khay</label>
+                        <label>Hàng</label>
                         <select id="selectHang" required>
                             <option value="1">Hàng 1</option>
                             <option value="2">Hàng 2</option>
@@ -343,15 +292,15 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Barcode Khay</label>
-                        <input type="text" id="barcodeKhay" placeholder="Mã khay..." value="" required>
+                        <label>Mã Khay</label>
+                        <input type="text" id="barcodeKhay" placeholder="Mã khay..." required>
                     </div>
                     <div class="form-group">
-                        <label>Barcode Túi</label>
-                        <input type="text" id="barcodeTui" placeholder="Mã túi máu..." required>
+                        <label>Mã Túi</label>
+                        <input type="text" id="barcodeTui" placeholder="Mã túi..." required autofocus>
                     </div>
                     <div class="form-group">
-                        <label>Nhóm Máu</label>
+                        <label>Nhóm</label>
                         <select id="nhomMau" required>
                             <option value="O">O</option>
                             <option value="A">A</option>
@@ -360,7 +309,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Yếu Tố Rh</label>
+                        <label>Rh</label>
                         <select id="rhFactor" required>
                             <option value="Rh+">Rh(+)</option>
                             <option value="Rh-">Rh(-)</option>
@@ -379,7 +328,7 @@
                         <input type="date" id="ngayNhap" required>
                     </div>
                     <div class="form-group">
-                        <label>Hạn Sử Dụng</label>
+                        <label>Hạn SD</label>
                         <input type="date" id="hanSuDung" readonly style="background-color: #e9ecef;">
                     </div>
                     <div class="form-group">
@@ -388,7 +337,20 @@
                 </form>
             </div>
 
-            <!-- Khung hiển thị 12 ngăn dạng 2 cột: Trái (1-6) & Phải (7-12) -->
+            <!-- Form Xuất Kho Nhanh Bằng Barcode -->
+            <div class="card" style="border-left: 5px solid #d32f2f;">
+                <h3 style="color: #d32f2f; border-bottom-color: #d32f2f;">Xuất Nhanh Túi Máu Khỏi Kho</h3>
+                <form id="quickCheckoutForm" style="display: grid; grid-template-columns: 3fr 140px; gap: 10px; align-items: end;">
+                    <div class="form-group">
+                        <label>Quét Mã Barcode Túi Máu Cần Xuất</label>
+                        <input type="text" id="barcodeCheckout" placeholder="Quét barcode để xuất kho...">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" style="height: 36px; background-color: #d32f2f;">Xác Nhận Xuất</button>
+                    </div>
+                </form>
+            </div>
+
             <div class="grid-layout">
                 <div class="column-container" id="leftColumn">
                     <div class="column-title">CỘT BÊN TRÁI (NGĂN 1 - 6)</div>
@@ -399,14 +361,14 @@
             </div>
         </div>
 
-        <!-- Cột phải: Thao tác hệ thống, Tìm kiếm & Thống kê -->
         <div class="sidebar">
             <div class="card">
                 <h3>Quản Lý Dữ Liệu</h3>
-                <button class="btn-success" onclick="exportToExcel()">📊 Xuất Excel</button>
+                <button class="btn-info" style="background-color: #d32f2f; margin-bottom: 8px;" onclick="checkoutAllCabinet()">🚀 Xuất kho tất cả túi trong tủ</button>
+                <button class="btn-success" onclick="exportToExcel()">📊 Xuất Excel & Sheets</button>
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="importFromExcel(event)">
                 <button class="btn-info" onclick="document.getElementById('excelFileInput').click()">📥 Nhập File Excel</button>
-                <button class="btn-clear-all" onclick="clearAllData()">🗑️ Xóa Tất Cả Dữ Liệu Kho</button>
+                <button class="btn-clear-all" onclick="clearAllData()">🗑️ Xóa Tất Cả Dữ Liệu</button>
             </div>
 
             <div class="card">
@@ -436,7 +398,7 @@
         </div>
     </div>
 
-    <!-- Modal chọn nơi chuyển túi/khay -->
+    <!-- Modal chọn nơi chuyển -->
     <div id="moveModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top:0;" id="modalTitle">Chuyển Vị Trí</h3>
@@ -460,7 +422,7 @@
         </div>
     </div>
 
-    <!-- Modal Sửa Thông Tin Túi Máu -->
+    <!-- Modal Sửa Thông Tin -->
     <div id="editItemModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top:0;">Sửa Thông Tin Túi Máu</h3>
@@ -507,7 +469,7 @@
         </div>
     </div>
 
-    <!-- Nhúng Firebase SDK v10 (Modular) với cấu hình đã cung cấp -->
+    <!-- Nhúng Firebase SDK v10 & Apps Script Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -524,10 +486,10 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        // Sử dụng collection/document riêng cho tủ TTB237
-        const docRef = doc(db, "kho_tho", "data_36_ttb237");
+        const docRef = doc(db, "kho_sach", "data_36_ttb237");
 
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydGdn4l_KvTboqTnMnDEhTk305GH6-gjwqHGos1K9eYR1mcbY4vbTOkIOb2oX0av9NOw/exec";
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydGdn4l_KvTboqTnMnDEhTk305GH6-gjwqHGos1K9eYR1mcbY4vbTOkIOb2oX0av9NOw/exec";
+        const TU_ID = "36-TTB237";
 
         const totalNgan = 12;
         const totalRows = 4;
@@ -601,7 +563,28 @@
             }
         }
 
-        // Lắng nghe dữ liệu Realtime từ Firestore
+        async function logCheckoutToGoogleSheet(item) {
+            if (!APPS_SCRIPT_URL) return;
+            try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: "checkout",
+                        tuId: TU_ID,
+                        barcode: item.barcode,
+                        nhom: item.nhom,
+                        rh: item.rh,
+                        dungTich: item.dungTich,
+                        hanSuDung: item.hanSuDung
+                    })
+                });
+            } catch (err) {
+                console.error("Lỗi gửi log xuất kho lên Google Sheet:", err);
+            }
+        }
+
         onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
                 const cloudData = docSnap.data().inventory;
@@ -679,18 +662,16 @@
 
             closeModal();
             renderView();
-            document.getElementById('searchResult').innerHTML = '';
         });
 
         let editTargetNgan = null, editTargetHang = null, editTargetIndex = null;
-
         window.openEditItemModal = function(nganId, hangId, index) {
             editTargetNgan = nganId; editTargetHang = hangId; editTargetIndex = index;
             const item = inventory[nganId].rows[hangId].items[index];
             document.getElementById('editBarcodeTui').value = item.barcode;
-            document.getElementById('editNhomMau').value = item.nhom;
-            document.getElementById('editRhFactor').value = item.rh;
-            document.getElementById('editDungTich').value = item.dungTich;
+            document.getElementById('editNhomMau').value = item.nhom || 'O';
+            document.getElementById('editRhFactor').value = item.rh || 'Rh+';
+            document.getElementById('editDungTich').value = item.dungTich || '250';
             document.getElementById('editNgayNhap').value = item.ngayNhap || todayStr;
             document.getElementById('editHanSuDung').value = item.hanSuDung || addDays(item.ngayNhap || todayStr, 42);
             document.getElementById('editItemModal').style.display = 'flex';
@@ -700,38 +681,16 @@
 
         document.getElementById('saveEditItemBtn').addEventListener('click', function() {
             const newBarcode = document.getElementById('editBarcodeTui').value.trim();
-            const newNhom = document.getElementById('editNhomMau').value;
-            const newRh = document.getElementById('editRhFactor').value;
-            const newDungTich = document.getElementById('editDungTich').value;
-            const newNgayNhap = document.getElementById('editNgayNhap').value;
-            const newHanSuDung = document.getElementById('editHanSuDung').value;
-
-            if (!newBarcode) { alert('Barcode túi máu không được để trống!'); return; }
-
+            if (!newBarcode) { alert('Barcode không được để trống!'); return; }
             const currentItem = inventory[editTargetNgan].rows[editTargetHang].items[editTargetIndex];
-            if (newBarcode.toLowerCase() !== currentItem.barcode.toLowerCase()) {
-                for (let n in inventory) {
-                    for (let r in inventory[n].rows) {
-                        if (inventory[n].rows[r].items.some(item => item.barcode.toLowerCase() === newBarcode.toLowerCase())) {
-                            alert('Barcode túi máu mới đã tồn tại trong hệ thống!');
-                            return;
-                        }
-                    }
-                }
-            }
-
             currentItem.barcode = newBarcode;
-            currentItem.nhom = newNhom;
-            currentItem.rh = newRh;
-            currentItem.dungTich = newDungTich;
-            currentItem.ngayNhap = newNgayNhap;
-            currentItem.hanSuDung = newHanSuDung;
-
+            currentItem.nhom = document.getElementById('editNhomMau').value;
+            currentItem.rh = document.getElementById('editRhFactor').value;
+            currentItem.dungTich = document.getElementById('editDungTich').value;
+            currentItem.ngayNhap = document.getElementById('editNgayNhap').value;
+            currentItem.hanSuDung = document.getElementById('editHanSuDung').value;
             closeEditModal();
             renderView();
-
-            const searchInput = document.getElementById('searchInput').value.trim();
-            if (searchInput) searchBloodBag();
         });
 
         function createCompartmentBox(i) {
@@ -755,9 +714,9 @@
                             <td>${formatDateDisplay(item.ngayNhap)}</td>
                             <td>${formatDateDisplay(item.hanSuDung)}</td>
                             <td>
-                                <button class="btn-edit-single" title="Sửa thông tin" onclick="openEditItemModal(${i}, ${r}, ${index})">✏️</button>
-                                <button class="btn-move-single" title="Chuyển vị trí" onclick="openMoveItemModal(${i}, ${r}, ${index})">🔄</button>
-                                <button class="btn-danger" title="Xóa" onclick="removeItem(${i}, ${r}, ${index})">🗑️</button>
+                                <button class="btn-edit-single" onclick="openEditItemModal(${i}, ${r}, ${index})">✏️</button>
+                                <button class="btn-move-single" onclick="openMoveItemModal(${i}, ${r}, ${index})">🔄</button>
+                                <button class="btn-danger" onclick="removeItem(${i}, ${r}, ${index})">🗑</button>
                             </td>
                         </tr>
                     `;
@@ -768,8 +727,8 @@
                         <div class="row-title">
                             <span>
                                 HÀNG KHAY ${r} (Mã: <b>${rowData.barcodeKhay || 'Trống'}</b>)
-                                <button class="btn-edit-tray" onclick="editBarcodeKhay(${i}, ${r})">✏️ Sửa Khay</button>
-                                <button class="btn-move-tray" onclick="openMoveRowModal(${i}, ${r})">🔄 Chuyển Ngăn</button>
+                                <button class="btn-edit-tray" onclick="editBarcodeKhay(${i}, ${r})">✏ Khay</button>
+                                <button class="btn-move-tray" onclick="openMoveRowModal(${i}, ${r})">🔄 Chuyển</button>
                             </span>
                             <span>SL: ${rowData.items.length}</span>
                         </div>
@@ -782,7 +741,7 @@
                                         <th>Nhóm / Rh</th>
                                         <th>Dung Tích</th>
                                         <th>Ngày Nhập</th>
-                                        <th>Hạn Sử Dụng</th>
+                                        <th>Hạn SD</th>
                                         <th style="width: 85px;">Thao Tác</th>
                                     </tr>
                                 </thead>
@@ -797,7 +756,10 @@
             box.className = 'compartment-box';
             box.innerHTML = `
                 <div class="compartment-header">
-                    <span>NGĂN ${i}</span>
+                    <div>
+                        <span>NGĂN ${i}</span>
+                        <button class="btn-checkout-ngan" onclick="checkoutCompartment(${i})">🚀 Xuất Kho Ngăn</button>
+                    </div>
                     <small>Tổng số: <b>${totalItemsInNgan}</b> túi</small>
                 </div>
                 ${rowsContentHtml}
@@ -808,7 +770,6 @@
         function renderView(shouldSyncCloud = true) {
             const leftCol = document.getElementById('leftColumn');
             const rightCol = document.getElementById('rightColumn');
-
             leftCol.innerHTML = '<div class="column-title">CỘT BÊN TRÁI (NGĂN 1 - 6)</div>';
             rightCol.innerHTML = '<div class="column-title">CỘT BÊN PHẢI (NGĂN 7 - 12)</div>';
 
@@ -827,7 +788,7 @@
             e.preventDefault();
             const nganId = document.getElementById('selectNgan').value;
             const hangId = document.getElementById('selectHang').value;
-            const barcodeKhay = document.getElementById('barcodeKhay').value;
+            const barcodeKhay = document.getElementById('barcodeKhay').value.trim();
             const barcodeTui = document.getElementById('barcodeTui').value.trim();
             const nhomMau = document.getElementById('nhomMau').value;
             const rhFactor = document.getElementById('rhFactor').value;
@@ -858,24 +819,121 @@
 
             document.getElementById('barcodeTui').value = '';
             renderView();
+            document.getElementById('barcodeTui').focus();
         });
 
+        document.getElementById('quickCheckoutForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const barcodeOut = document.getElementById('barcodeCheckout').value.trim().toLowerCase();
+            if (!barcodeOut) return;
+
+            let found = false;
+            let checkedOutItem = null;
+            for (let n in inventory) {
+                for (let r in inventory[n].rows) {
+                    const idx = inventory[n].rows[r].items.findIndex(item => item.barcode.toLowerCase() === barcodeOut);
+                    if (idx !== -1) {
+                        checkedOutItem = inventory[n].rows[r].items.splice(idx, 1)[0];
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) break;
+            }
+
+            if (found) {
+                logCheckoutToGoogleSheet(checkedOutItem);
+                renderView();
+            } else {
+                alert(`❌ Không tìm thấy túi máu có mã "${barcodeOut}" trong kho!`);
+            }
+
+            document.getElementById('barcodeCheckout').value = '';
+            document.getElementById('barcodeCheckout').focus();
+        });
+
+        window.checkoutCompartment = function(nganId) {
+            let count = 0;
+            for (let r = 1; r <= totalRows; r++) {
+                const itemsInRow = inventory[nganId].rows[r].items;
+                count += itemsInRow.length;
+                itemsInRow.forEach(item => logCheckoutToGoogleSheet(item));
+                inventory[nganId].rows[r].items = [];
+            }
+            if (count === 0) { alert('Ngăn này đang trống!'); return; }
+            renderView();
+            alert(`✅ Đã xuất kho toàn bộ ${count} túi từ NGĂN ${nganId} và ghi log lên Google Sheets.`);
+        }
+
+        window.checkoutAllCabinet = function() {
+            if (!confirm('⚠️ Bạn có chắc chắn muốn xuất kho TOÀN BỘ tủ kho máu?')) return;
+            for (let n in inventory) {
+                for (let r in inventory[n].rows) {
+                    inventory[n].rows[r].items.forEach(item => logCheckoutToGoogleSheet(item));
+                }
+            }
+            inventory = initInventory();
+            renderView();
+            alert('🚀 Đã xuất kho toàn bộ tủ và ghi log lên Google Sheets!');
+        }
+
         window.removeItem = function(nganId, hangId, index) {
-            if (confirm('Bạn có chắc chắn muốn xóa túi máu này?')) {
+            if (confirm('Xóa túi máu này khỏi kho?')) {
                 inventory[nganId].rows[hangId].items.splice(index, 1);
                 renderView();
-                
-                const searchInput = document.getElementById('searchInput').value.trim();
-                if (searchInput) searchBloodBag();
             }
         }
 
         window.clearAllData = function() {
-            if (confirm("⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA TẤT CẢ dữ liệu kho máu?")) {
+            if (confirm("⚠️ Xóa tất cả dữ liệu?")) {
                 inventory = initInventory();
                 renderView();
-                document.getElementById('searchResult').innerHTML = '';
             }
+        }
+
+        function updateStats() {
+            const groupKeys = ['O Rh+', 'O Rh-', 'A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-'];
+            const stats = {};
+            groupKeys.forEach(k => stats[k] = { 250: 0, 350: 0, 450: 0 });
+
+            for (let n in inventory) {
+                for (let r in inventory[n].rows) {
+                    inventory[n].rows[r].items.forEach(item => {
+                        const key = `${item.nhom} ${item.rh || 'Rh+'}`;
+                        const dt = parseInt(item.dungTich, 10);
+                        if (stats[key] && stats[key][dt] !== undefined) {
+                            stats[key][dt]++;
+                        }
+                    });
+                }
+            }
+
+            const statsBody = document.getElementById('statsBody');
+            statsBody.innerHTML = '';
+            let grandTotal = 0;
+
+            groupKeys.forEach(g => {
+                const rowTotal = stats[g][250] + stats[g][350] + stats[g][450];
+                grandTotal += rowTotal;
+                if (rowTotal > 0) {
+                    statsBody.innerHTML += `
+                        <tr>
+                            <td><b>${g}</b></td>
+                            <td>${stats[g][250]}</td>
+                            <td>${stats[g][350]}</td>
+                            <td>${stats[g][450]}</td>
+                            <td><b>${rowTotal}</b></td>
+                        </tr>
+                    `;
+                }
+            });
+
+            statsBody.innerHTML += `
+                <tr style="background-color: #ffebee; font-weight: bold;">
+                    <td>TỔNG CỘNG</td>
+                    <td colspan="4" style="text-align: right; color: var(--primary-color); font-size: 1.1em;">${grandTotal} túi</td>
+                </tr>
+            `;
         }
 
         window.exportToExcel = function() {
@@ -889,7 +947,7 @@
                     rowData.items.forEach((item, index) => {
                         exportData.push({
                             "STT": sttTong,
-                            "Tủ lưu trữ": "36-TTB237",
+                            "Tủ lưu trữ": TU_ID,
                             "Ngăn": `NGĂN ${n}`,
                             "Hàng Khay": `HÀNG ${r}`,
                             "STT Trong Khay": index + 1,
@@ -903,7 +961,7 @@
                         });
 
                         itemsForGoogleSheet.push({
-                            tuLuuTru: "36-TTB237",
+                            tuLuuTru: TU_ID,
                             ngan: `NGĂN ${n}`,
                             hang: `HÀNG ${r}`,
                             sttTrongKhay: index + 1,
@@ -915,29 +973,27 @@
                             ngayNhap: formatDateDisplay(item.ngayNhap),
                             hanSuDung: formatDateDisplay(item.hanSuDung)
                         });
+
                         sttTong++;
                     });
                 }
             }
 
-            if (exportData.length === 0) {
-                alert("Kho máu hiện tại đang trống, không có dữ liệu để xuất!");
-                return;
-            }
+            if (exportData.length === 0) { alert("Kho trống!"); return; }
 
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "KHO_MAU_TTB237");
-            XLSX.writeFile(workbook, `KHO_MAU_TTB237_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.utils.book_append_sheet(workbook, worksheet, `KHO_MAU_${TU_ID}`);
+            XLSX.writeFile(workbook, `KHO_MAU_${TU_ID}_${new Date().toISOString().slice(0,10)}.xlsx`);
 
-            fetch(GOOGLE_SCRIPT_URL, {
+            fetch(APPS_SCRIPT_URL, {
                 method: "POST",
                 mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ items: itemsForGoogleSheet })
-            }).catch(err => console.error(err));
+            }).catch(err => console.error("Lỗi Google Sheet:", err));
 
-            setTimeout(() => alert("✅ Đã xuất file Excel và đồng bộ lên Google Sheet!"), 300);
+            setTimeout(() => alert("✅ Đã xuất Excel và tạo trang tính trên Google Sheets!"), 300);
         }
 
         function parseFormattedDate(dateStr) {
@@ -953,62 +1009,41 @@
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
-                    if (!jsonData || jsonData.length === 0) {
-                        alert("⚠️ File Excel không có dữ liệu!");
-                        return;
-                    }
-
-                    if (!confirm(`Tìm thấy ${jsonData.length} túi máu trong file Excel. Bạn có muốn khôi phục dữ liệu này vào kho hiện tại không?`)) {
-                        event.target.value = '';
-                        return;
-                    }
+                    if (!jsonData || jsonData.length === 0) return alert("File rỗng!");
 
                     inventory = initInventory();
                     let count = 0;
                     jsonData.forEach(row => {
-                        const nganText = String(row["Ngăn"] || "").trim();
-                        const hangText = String(row["Hàng Khay"] || "").trim();
-                        const barcodeKhay = String(row["Barcode Khay"] || "").trim();
+                        const nganMatch = String(row["Ngăn"] || "").match(/\d+/);
+                        const hangMatch = String(row["Hàng Khay"] || "").match(/\d+/);
                         const barcodeTui = String(row["Barcode Túi Máu"] || "").trim();
-                        const nhomMau = String(row["Nhóm Máu"] || "O").trim();
-                        const rhFactor = String(row["Yếu Tố Rh"] || "Rh+").trim();
-                        const dungTich = String(row["Dung Tích (ml)"] || "250").trim();
-                        let ngayNhap = parseFormattedDate(String(row["Ngày Nhập"] || "").trim()) || todayStr;
-                        let hanSuDung = parseFormattedDate(String(row["Hạn Sử Dụng"] || "").trim()) || addDays(ngayNhap, 42);
-
-                        const nganMatch = nganText.match(/\d+/);
-                        const hangMatch = hangText.match(/\d+/);
 
                         if (nganMatch && hangMatch && barcodeTui) {
-                            const nganId = parseInt(nganMatch[0], 10);
-                            const hangId = parseInt(hangMatch[0], 10);
-
-                            if (inventory[nganId] && inventory[nganId].rows[hangId]) {
-                                inventory[nganId].rows[hangId].barcodeKhay = barcodeKhay;
-                                inventory[nganId].rows[hangId].items.push({
+                            const nId = parseInt(nganMatch[0], 10);
+                            const hId = parseInt(hangMatch[0], 10);
+                            if (inventory[nId] && inventory[nId].rows[hId]) {
+                                inventory[nId].rows[hId].barcodeKhay = String(row["Barcode Khay"] || "").trim();
+                                inventory[nId].rows[hId].items.push({
                                     barcode: barcodeTui,
-                                    nhom: nhomMau,
-                                    rh: rhFactor,
-                                    dungTich: dungTich,
-                                    ngayNhap: ngayNhap,
-                                    hanSuDung: hanSuDung
+                                    nhom: String(row["Nhóm Máu"] || "O").trim(),
+                                    rh: String(row["Yếu Tố Rh"] || "Rh+").trim(),
+                                    dungTich: String(row["Dung Tích (ml)"] || "250").trim(),
+                                    ngayNhap: parseFormattedDate(String(row["Ngày Nhập"] || "").trim()) || todayStr,
+                                    hanSuDung: parseFormattedDate(String(row["Hạn Sử Dụng"] || "").trim()) || addDays(todayStr, 42)
                                 });
                                 count++;
                             }
                         }
                     });
-
                     renderView();
-                    alert(`✅ Đã nhập thành công ${count} túi máu từ file Excel!`);
+                    alert(`✅ Nhập thành công ${count} túi máu từ Excel!`);
                 } catch (error) {
-                    alert("❌ Lỗi đọc file Excel!");
+                    alert("Lỗi đọc file Excel!");
                 } finally {
                     event.target.value = '';
                 }
@@ -1019,7 +1054,6 @@
         window.searchBloodBag = function() {
             const query = document.getElementById('searchInput').value.trim().toLowerCase();
             const resultDiv = document.getElementById('searchResult');
-            
             if (!query) { resultDiv.innerHTML = ''; return; }
 
             let found = null, foundNgan = null, foundHang = null, foundIndex = null;
@@ -1040,70 +1074,15 @@
                 resultDiv.innerHTML = `
                     <strong>Tìm thấy túi máu!</strong><br>
                     - Barcode: <b>${found.barcode}</b><br>
-                    - Vị trí: <b>NGĂN ${foundNgan} -> HÀNG ${foundHang} (STT: ${foundIndex + 1})</b><br>
-                    - Mã khay: <b>${inventory[foundNgan].rows[foundHang].barcodeKhay || 'Trống'}</b><br>
+                    - Vị trí: <b>NGĂN ${foundNgan} -> HÀNG ${foundHang}</b><br>
                     - Nhóm máu: <b>${found.nhom} (${found.rh})</b><br>
-                    - Dung tích: <b>${found.dungTich} ml</b><br>
-                    - Ngày nhập: <b>${formatDateDisplay(found.ngayNhap)}</b><br>
-                    - Hạn sử dụng: <b>${formatDateDisplay(found.hanSuDung)}</b><br>
-                    <div style="display: flex; gap: 5px; margin-top: 8px;">
-                        <button class="btn-edit-single" style="flex:1; padding: 6px;" onclick="openEditItemModal(${foundNgan}, ${foundHang}, ${foundIndex})">✏️ Sửa thông tin</button>
-                        <button class="btn-move-tray" style="flex:1; padding: 6px;" onclick="openMoveItemModal(${foundNgan}, ${foundHang}, ${foundIndex})">🔄 Chuyển vị trí</button>
-                        <button class="btn-danger" style="flex:1; padding: 6px;" onclick="removeItem(${foundNgan}, ${foundHang}, ${foundIndex})">🗑️ Xóa túi này</button>
-                    </div>
+                    - Thể tích: <b>${found.dungTich} ml</b><br>
+                    - Hạn sử dụng: <b>${formatDateDisplay(found.hanSuDung)}</b>
                 `;
             } else {
                 resultDiv.className = 'search-result not-found';
-                resultDiv.innerHTML = '<strong>Không tìm thấy</strong> túi máu trong kho.';
+                resultDiv.innerHTML = 'Không tìm thấy túi máu này trong kho.';
             }
-        }
-
-        function updateStats() {
-            const groupKeys = ['O Rh+', 'O Rh-', 'A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-'];
-            const stats = {};
-            groupKeys.forEach(key => stats[key] = { 250: 0, 350: 0, 450: 0 });
-
-            for (let n in inventory) {
-                for (let r in inventory[n].rows) {
-                    inventory[n].rows[r].items.forEach(item => {
-                        const key = `${item.nhom} ${item.rh || 'Rh+'}`;
-                        if (stats[key] && stats[key][item.dungTich] !== undefined) {
-                            stats[key][item.dungTich]++;
-                        }
-                    });
-                }
-            }
-
-            const statsBody = document.getElementById('statsBody');
-            statsBody.innerHTML = '';
-            let grandTotal = 0;
-
-            groupKeys.forEach(groupKey => {
-                const t250 = stats[groupKey][250];
-                const t350 = stats[groupKey][350];
-                const t450 = stats[groupKey][450];
-                const rowTotal = t250 + t350 + t450;
-                grandTotal += rowTotal;
-
-                if (rowTotal > 0) {
-                    statsBody.innerHTML += `
-                        <tr>
-                            <td><b>${groupKey}</b></td>
-                            <td>${t250}</td>
-                            <td>${t350}</td>
-                            <td>${t450}</td>
-                            <td><b>${rowTotal}</b></td>
-                        </tr>
-                    `;
-                }
-            });
-
-            statsBody.innerHTML += `
-                <tr style="background-color: #ffebee; font-weight: bold;">
-                    <td>TỔNG CỘNG</td>
-                    <td colspan="4" style="text-align: right; color: var(--primary-color); font-size: 1.1em;">${grandTotal} túi</td>
-                </tr>
-            `;
         }
     </script>
 </body>
