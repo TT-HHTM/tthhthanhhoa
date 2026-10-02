@@ -407,7 +407,7 @@
                 <button class="btn-success" onclick="exportToExcel()">📊 Xuất Excel</button>
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="importFromExcel(event)">
                 <button class="btn-info" onclick="document.getElementById('excelFileInput').click()">📥 Nhập File Excel</button>
-                <button class="btn-clear-all" onclick="clearAllData()">🗑️️ Xóa Tất Cả Dữ Liệu Kho</button>
+                <button class="btn-clear-all" onclick="clearAllData()">🗑 Xóa Tất Cả Dữ Liệu Kho</button>
             </div>
 
             <div class="card">
@@ -525,7 +525,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const docRef = doc(db, "kho_sach", "data_36_ttb237"); // Định danh riêng cho tủ 237
+        const docRef = doc(db, "kho_sach", "data_36_ttb237"); // Định danh riêng cho tủ 237[cite: 2]
 
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydGdn4l_KvTboqTnMnDEhTk305GH6-gjwqHGos1K9eYR1mcbY4vbTOkIOb2oX0av9NOw/exec";
 
@@ -1167,6 +1167,7 @@
             }
 
             const statsBody = document.getElementById('statsBody');
+            statsBody.statsBody = ''; // Clear properly
             statsBody.innerHTML = '';
 
             let grandTotal = 0;
