@@ -59,6 +59,13 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
+        .sync-status {
+            font-size: 0.85em;
+            margin-top: 5px;
+            color: #ffffff;
+            font-style: italic;
+        }
+
         .container {
             display: grid;
             grid-template-columns: 3fr 1fr;
@@ -305,13 +312,6 @@
             width: 350px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
-
-        .sync-status {
-            font-size: 0.8em;
-            margin-top: 5px;
-            color: #ffffff;
-            font-style: italic;
-        }
     </style>
 </head>
 <body>
@@ -406,7 +406,7 @@
                 <button class="btn-success" onclick="exportToExcel()">📊 Xuất Excel</button>
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="importFromExcel(event)">
                 <button class="btn-info" onclick="document.getElementById('excelFileInput').click()">📥 Nhập File Excel</button>
-                <button class="btn-clear-all" onclick="clearAllData()">🗑️ Xóa Tất Cả Dữ Liệu Kho</button>
+                <button class="btn-clear-all" onclick="clearAllData()">🗑 Xóa Tất Cả Dữ Liệu Kho</button>
             </div>
 
             <div class="card">
@@ -523,30 +523,14 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const docRef = doc(db, "kho_tho", "data_36_ttb236"); // Document riêng biệt cho kho thô
+        const docRef = doc(db, "kho_sach", "data_36_ttb236"); // Định danh riêng cho tủ 236[cite: 1]
 
-        // URL Web App Google Script
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydGdn4l_KvTboqTnMnDEhTk305GH6-gjwqHGos1K9eYR1mcbY4vbTOkIOb2oX0av9NOw/exec";
 
         const totalNgan = 12;
-        const totalRows = 3;
+        const totalRows = 3; // Giới hạn 3 hàng khay[cite: 1]
         let inventory = {};
         let isRemoteUpdate = false;
-
-        function initInventory() {
-            let temp = {};
-            for (let i = 1; i <= totalNgan; i++) {
-                temp[i] = {
-                    rows: {
-                        1: { barcodeKhay: '', items: [] },
-                        2: { barcodeKhay: '', items: [] },
-                        3: { barcodeKhay: '', items: [] }
-                    }
-                };
-            }
-            return temp;
-        }
-        inventory = initInventory();
 
         // Đặt ngày nhập mặc định là hôm nay và tự động tính HSD (+42 ngày)
         const todayStr = new Date().toISOString().split('T')[0];
@@ -575,6 +559,21 @@
         document.getElementById('editNgayNhap').addEventListener('change', function() {
             document.getElementById('editHanSuDung').value = addDays(this.value, 42);
         });
+
+        function initInventory() {
+            let temp = {};
+            for (let i = 1; i <= totalNgan; i++) {
+                temp[i] = {
+                    rows: {
+                        1: { barcodeKhay: '', items: [] },
+                        2: { barcodeKhay: '', items: [] },
+                        3: { barcodeKhay: '', items: [] }
+                    }
+                };
+            }
+            return temp;
+        }
+        inventory = initInventory();
 
         const selectNgan = document.getElementById('selectNgan');
         const modalToNgan = document.getElementById('modalToNgan');
@@ -606,6 +605,12 @@
                 const cloudData = docSnap.data().inventory;
                 if (cloudData) {
                     isRemoteUpdate = true;
+                    // Đảm bảo chỉ lấy 3 hàng khay nếu dữ liệu cũ có nhiều hơn
+                    for (let n in cloudData) {
+                        if (cloudData[n] && cloudData[n].rows) {
+                            delete cloudData[n].rows[4];
+                        }
+                    }
                     inventory = cloudData;
                     renderView(false);
                     updateSyncStatus('🟢 Đã đồng bộ Realtime Firestore');
@@ -618,6 +623,7 @@
             updateSyncStatus('🔴 Lỗi kết nối Realtime Firestore', true);
         });
 
+        // Hàm lưu dữ liệu lên Cloud
         async function saveToCloud() {
             if (isRemoteUpdate) {
                 isRemoteUpdate = false;
@@ -770,12 +776,12 @@
         });
 
         function createCompartmentBox(i) {
-            const ngan = inventory[i];
+            const ngan = inventory[i] || { rows: { 1: { barcodeKhay: '', items: [] }, 2: { barcodeKhay: '', items: [] }, 3: { barcodeKhay: '', items: [] } } };
             let totalItemsInNgan = 0;
             let rowsContentHtml = '';
 
             for (let r = 1; r <= totalRows; r++) {
-                const rowData = ngan.rows[r];
+                const rowData = ngan.rows[r] || { barcodeKhay: '', items: [] };
                 totalItemsInNgan += rowData.items.length;
 
                 let itemsHtml = '';
@@ -789,7 +795,7 @@
                             <td>${formatDateDisplay(item.ngayNhap)}</td>
                             <td>${formatDateDisplay(item.hanSuDung)}</td>
                             <td>
-                                <button class="btn-edit-single" title="Sửa thông tin" onclick="openEditItemModal(${i}, ${r}, ${index})">✏️️</button>
+                                <button class="btn-edit-single" title="Sửa thông tin" onclick="openEditItemModal(${i}, ${r}, ${index})">✏️</button>
                                 <button class="btn-move-single" title="Chuyển vị trí" onclick="openMoveItemModal(${i}, ${r}, ${index})">🔄</button>
                                 <button class="btn-danger" title="Xóa" onclick="removeItem(${i}, ${r}, ${index})">🗑️</button>
                             </td>
@@ -857,7 +863,9 @@
             }
 
             updateStats();
-            if (shouldSyncCloud) saveToCloud();
+            if (shouldSyncCloud) {
+                saveToCloud();
+            }
         }
 
         document.getElementById('addBloodForm').addEventListener('submit', function(e) {
@@ -881,6 +889,10 @@
                         return;
                     }
                 }
+            }
+
+            if (!inventory[nganId]) {
+                inventory[nganId] = { rows: { 1: { barcodeKhay: '', items: [] }, 2: { barcodeKhay: '', items: [] }, 3: { barcodeKhay: '', items: [] } } };
             }
 
             inventory[nganId].rows[hangId].barcodeKhay = barcodeKhay;
@@ -926,7 +938,8 @@
 
             for (let n = 1; n <= totalNgan; n++) {
                 for (let r = 1; r <= totalRows; r++) {
-                    const rowData = inventory[n].rows[r];
+                    const rowData = inventory[n]?.rows[r];
+                    if (!rowData) continue;
                     rowData.items.forEach((item, index) => {
                         exportData.push({
                             "STT": sttTong,
@@ -970,21 +983,6 @@
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "KHO_MAU_TTB236");
-
-            worksheet['!cols'] = [
-                { wch: 6 },
-                { wch: 15 },
-                { wch: 10 },
-                { wch: 12 },
-                { wch: 15 },
-                { wch: 15 },
-                { wch: 20 },
-                { wch: 12 },
-                { wch: 12 },
-                { wch: 15 },
-                { wch: 15 },
-                { wch: 15 }
-            ];
 
             const fileName = `KHO_MAU_TTB236_${new Date().toISOString().slice(0,10)}.xlsx`;
             XLSX.writeFile(workbook, fileName);
@@ -1048,7 +1046,7 @@
                         const barcodeKhay = String(row["Barcode Khay"] || "").trim();
                         const barcodeTui = String(row["Barcode Túi Máu"] || "").trim();
                         const nhomMau = String(row["Nhóm Máu"] || "O").trim();
-                        const rhFactor = String(row["Yếu Tố Rh"] || "Rh+").trim();
+                        const rhFactor = String(row["Yếu Tố Rh"] || row["Rh"] || "Rh+").trim();
                         const dungTich = String(row["Dung Tích (ml)"] || "250").trim();
                         let ngayNhap = parseFormattedDate(String(row["Ngày Nhập"] || "").trim());
                         let hanSuDung = parseFormattedDate(String(row["Hạn Sử Dụng"] || "").trim());
@@ -1067,7 +1065,7 @@
                             const nganId = parseInt(nganMatch[0], 10);
                             const hangId = parseInt(hangMatch[0], 10);
 
-                            if (inventory[nganId] && inventory[nganId].rows[hangId]) {
+                            if (hangId <= totalRows && inventory[nganId] && inventory[nganId].rows[hangId]) {
                                 inventory[nganId].rows[hangId].barcodeKhay = barcodeKhay;
                                 inventory[nganId].rows[hangId].items.push({
                                     barcode: barcodeTui,
@@ -1160,6 +1158,7 @@
             });
 
             for (let n in inventory) {
+                if (!inventory[n]?.rows) continue;
                 for (let r in inventory[n].rows) {
                     inventory[n].rows[r].items.forEach(item => {
                         const key = `${item.nhom} ${item.rh || 'Rh+'}`;
