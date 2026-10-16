@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Quản Lý Kho Tủ Lạnh Chứa Máu</title>
+    <!-- Thư viện Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary-color: #b71c1c;
@@ -30,11 +32,50 @@
             flex-direction: column;
             align-items: center;
             padding: 20px;
+            position: relative;
+        }
+
+        /* Ô tìm kiếm góc trên cùng bên trái */
+        #search-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #ffffff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-width: 320px;
+            width: 100%;
+        }
+
+        #search-container input {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        #search-container input:focus {
+            border-color: var(--primary-color);
+        }
+
+        #search-result {
+            font-size: 0.85rem;
+            color: #555;
+            min-height: 20px;
+            word-break: break-word;
+            line-height: 1.4;
         }
 
         .header {
             text-align: center;
             margin-bottom: 30px;
+            margin-top: 10px;
         }
 
         .header h1 {
@@ -152,6 +193,23 @@
             background-color: var(--clean-hover);
         }
 
+        /* Nút đi tới tủ máu trong kết quả tìm kiếm */
+        .btn-goto-cabinet {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background-color: #0277bd;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .btn-goto-cabinet:hover {
+            background-color: #01579b;
+        }
+
         /* Bảng theo dõi thông báo nhiệt độ từ Mail */
         .mail-table {
             width: 100%;
@@ -200,9 +258,29 @@
             font-size: 0.9rem;
             text-align: center;
         }
+
+        /* Responsive cho mobile */
+        @media (max-width: 768px) {
+            body {
+                padding-top: 90px;
+            }
+            #search-container {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body>
+
+    <!-- Ô tìm kiếm túi máu góc trên bên trái -->
+    <div id="search-container">
+        <label for="blood-search-input" style="font-size: 0.8rem; font-weight: bold; color: #444;">🔍 Tìm nhanh túi máu:</label>
+        <input type="text" id="blood-search-input" placeholder="Nhập mã túi máu..." autocomplete="off">
+        <div id="search-result">Nhập mã để tìm kiếm...</div>
+    </div>
 
     <div class="header">
         <h1>Hệ Thống Quản Lý Kho Máu</h1>
@@ -395,8 +473,112 @@
         <p>&copy; Hệ Thống Phần Mềm Quản Lý Kho Máu - Trung Tâm Máu</p>
     </footer>
 
-    <!-- Script kết nối tự động lấy dữ liệu từ Google Apps Script mới -->
+    <!-- Script kết nối tự động lấy dữ liệu từ Google Apps Script và Supabase -->
     <script>
+        const SUPABASE_URL = 'https://hbebizzldisahoonbrtn.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_Ob78HELQ_uFN2VvIRjPWig_2ZfUpYGL'; 
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const searchInput = document.getElementById('blood-search-input');
+        const searchResult = document.getElementById('search-result');
+
+        let searchTimeout = null;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            
+            if (!query) {
+                searchResult.innerHTML = "Nhập mã để tìm kiếm...";
+                searchResult.style.color = "#555";
+                return;
+            }
+
+            searchResult.innerHTML = "Đang tìm kiếm...";
+            searchResult.style.color = "#888";
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('blood_units') 
+                        .select('*')
+                        .eq('barcode_tui_mau', query)
+                        .maybeSingle();
+
+                    if (error) {
+                        console.error("Lỗi Supabase:", error);
+                        searchResult.innerHTML = "Lỗi CSDL: " + error.message;
+                        searchResult.style.color = "red";
+                        return;
+                    }
+
+                    if (!data) {
+                        searchResult.innerHTML = "Không tìm thấy túi máu!";
+                        searchResult.style.color = "red";
+                        return;
+                    }
+
+                    let statusText = "";
+                    let statusColor = "#333";
+                    const status = data.status;
+
+                    if (status === 'available') {
+                        statusText = "Đang trong kho thô";
+                        statusColor = "var(--primary-color)";
+                    } else if (status === 'khosach') {
+                        statusText = "Nhập kho sạch";
+                        statusColor = "var(--clean-primary)";
+                    } else if (status === 'xuatkho') {
+                        statusText = "Xuất kho";
+                        statusColor = "#e65100";
+                    } else {
+                        statusText = "Trạng thái: " + (status || "Không xác định");
+                    }
+
+                    // Xây dựng ánh xạ tên tủ sang đường dẫn file HTML tương ứng
+                    const cabinetMapping = {
+                        '36-TTB237': '237FN.html',
+                        '36-TTB25': '25FN.html',
+                        '36-TTB23': '23FN.html',
+                        '36-TTB236': '236FN.html',
+                        '36-TTB26': '26KS.html',
+                        '36-TTB236-Sach': '236KS.html'
+                    };
+
+                    let tuLuuTru = data.tu_luu_tru ?? '';
+                    let cabinetLink = cabinetMapping[tuLuuTru] || '#';
+
+                    // Hiển thị thêm thông tin chi tiết và nút đi tới tủ nếu ở kho thô hoặc kho sạch
+                    let extraInfo = "";
+                    if (status === 'available' || status === 'khosach') {
+                        const nhomMauFull = (data.nhom_mau ?? '') + ' ' + (data.yeu_to_rh ?? '');
+                        
+                        let gotoBtnHtml = tuLuuTru ? `<div style="margin-top: 6px;"><a href="${cabinetLink}" class="btn-goto-cabinet">👉 Tới tủ ${tuLuuTru} &rarr;</a></div>` : '';
+
+                        extraInfo = `
+                            <div style="margin-top: 6px; font-size: 0.8rem; color: #444; border-top: 1px dashed #ddd; padding-top: 4px; text-align: left;">
+                                <div><b>Nhóm máu:</b> ${nhomMauFull.trim() || 'N/A'}</div>
+                                <div><b>Thể tích:</b> ${data.dung_tich ?? 'N/A'}</div>
+                                <div><b>Tủ / Ngăn:</b> ${tuLuuTru || 'N/A'} / ${data.ngan ?? 'N/A'}</div>
+                                <div><b>Hàng khay:</b> ${data.hang_khay ?? 'N/A'}</div>
+                                <div><b>Barcode khay:</b> ${data.barcode_khay ?? 'N/A'}</div>
+                                <div><b>STT trong khay:</b> ${data.stt_trong_khay ?? 'N/A'}</div>
+                                ${gotoBtnHtml}
+                            </div>
+                        `;
+                    }
+
+                    searchResult.innerHTML = `Kết quả: <b style="color: ${statusColor}">${statusText}</b>${extraInfo}`;
+
+                } catch (err) {
+                    console.error("Lỗi kết nối:", err);
+                    searchResult.innerHTML = "Lỗi kết nối đến cơ sở dữ liệu.";
+                    searchResult.style.color = "red";
+                }
+            }, 400);
+        });
+
+        // Lấy dữ liệu nhiệt độ từ Google Apps Script
         const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx1Cz2TIpI-vEH-qDOfYu76-M4v9uaf4lttzTFLPSQLEtCI1vhrMFpvhRG5qSjiEvkxlg/exec";
 
         async function fetchTemperatureData() {
@@ -431,7 +613,6 @@
         }
 
         document.addEventListener("DOMContentLoaded", fetchTemperatureData);
-        // Tự động làm mới dữ liệu sau mỗi 5 phút (300000ms)
         setInterval(fetchTemperatureData, 300000);
     </script>
 </body>
