@@ -117,6 +117,7 @@
         .btn-success { background-color: #2e7d32; margin-bottom: 8px; }
         .btn-info { background-color: #0288d1; margin-bottom: 8px; }
         .btn-warning { background-color: #ef6c00; color: white; padding: 2px 6px; font-size: 0.75em; width: auto; border-radius: 3px; margin-left: 4px; cursor: pointer; }
+        .btn-danger { background-color: #c62828; margin-bottom: 8px; }
         .btn-edit-item { background-color: #0288d1; color: white; padding: 2px 6px; font-size: 0.75em; width: auto; border-radius: 3px; margin-right: 2px; cursor: pointer; }
         .btn-delete-item { background-color: #b71c1c; color: white; padding: 2px 6px; font-size: 0.75em; width: auto; border-radius: 3px; cursor: pointer; margin-left: 2px; }
 
@@ -315,6 +316,9 @@
                 <h3>Thao Tác File & Hiển Thị</h3>
                 <!-- Nút Xuất File Excel -->
                 <button class="btn-success" onclick="exportToExcel()">📊 Xuất File Excel</button>
+                
+                <!-- Nút Xuất Tất Cả Các Túi Máu -->
+                <button class="btn-danger" onclick="checkoutAllInventory()">🚀 Xuất Tất Cả Túi Máu</button>
                 
                 <!-- Nút điều khiển Thu gọn / Mở rộng tất cả -->
                 <div style="display: flex; gap: 8px; margin-top: 10px;">
@@ -644,6 +648,35 @@
                 }
                 loadDataFromSupabase();
                 alert(`✅ Đã xuất toàn bộ NGĂN ${nganId} thành công!`);
+            }
+        }
+
+        // Xuất toàn bộ tất cả các túi máu hiện có trong toàn bộ tủ lưu trữ
+        window.checkoutAllInventory = async function() {
+            let totalItemsAll = 0;
+            for (let n = 1; n <= totalNgan; n++) {
+                for (let r = 1; r <= totalRows; r++) {
+                    totalItemsAll += inventory[n].rows[r].items.length;
+                }
+            }
+
+            if (totalItemsAll === 0) {
+                alert("Kho sạch hiện tại đang trống, không có túi máu để xuất!");
+                return;
+            }
+
+            if (confirm(`⚠️ XÁC NHẬN: Bạn có chắc chắn muốn xuất TOÀN BỘ ${totalItemsAll} túi máu trong tất cả các ngăn ra khỏi kho sạch?`)) {
+                updateSyncStatus('🟡 Đang xử lý xuất toàn bộ kho...');
+                for (let n = 1; n <= totalNgan; n++) {
+                    for (let r = 1; r <= totalRows; r++) {
+                        const items = inventory[n].rows[r].items;
+                        for (let item of items) {
+                            await checkoutItemAndLog(item);
+                        }
+                    }
+                }
+                loadDataFromSupabase();
+                alert(`✅ Đã xuất toàn bộ ${totalItemsAll} túi máu khỏi kho sạch thành công!`);
             }
         }
 
