@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Kho Sạch - TTB36-TTB26 (Realtime Firestore & Google Sheets)</title>
-    <!-- Thư viện SheetJS để xuất/nhập file Excel (.xlsx / .xls) -->
+    <title>Quản Lý Kho Sạch - 36-TTB26 (Supabase Realtime)</title>
+    <!-- Thư viện SheetJS để xuất file Excel (.xlsx) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Thư viện Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary-color: #2e7d32; 
@@ -114,9 +116,10 @@
 
         .btn-success { background-color: #2e7d32; margin-bottom: 8px; }
         .btn-info { background-color: #0288d1; margin-bottom: 8px; }
-        .btn-sync-sheets { background-color: #ff8f00; margin-bottom: 8px; }
-        .btn-sync-sheets:hover { background-color: #ff6f00; }
-        .btn-clear-all { background-color: #c62828; }
+        .btn-warning { background-color: #ef6c00; color: white; padding: 2px 6px; font-size: 0.75em; width: auto; border-radius: 3px; margin-left: 4px; cursor: pointer; }
+        .btn-danger { background-color: #c62828; margin-bottom: 8px; }
+        .btn-edit-item { background-color: #0288d1; color: white; padding: 2px 6px; font-size: 0.75em; width: auto; border-radius: 3px; margin-right: 2px; cursor: pointer; }
+        .btn-delete-item { background-color: #b71c1c; color: white; padding: 2px 6px; font-size: 0.75em; width: auto; border-radius: 3px; cursor: pointer; margin-left: 2px; }
 
         .column-container {
             display: flex;
@@ -131,7 +134,6 @@
             font-weight: bold;
             border-radius: 4px;
             color: #444;
-            margin-bottom: 10px;
         }
 
         .compartment-box {
@@ -146,7 +148,6 @@
             font-weight: bold;
             font-size: 1.1em;
             color: var(--primary-color);
-            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -154,17 +155,32 @@
             padding: 8px 12px;
             border-radius: 6px;
             border-left: 5px solid var(--primary-color);
+            cursor: pointer;
+            user-select: none;
         }
 
-        .btn-checkout-ngan {
-            background-color: #d32f2f;
-            color: white;
-            padding: 3px 8px;
-            font-size: 0.75em;
-            width: auto;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: 8px;
+        .compartment-header:hover {
+            background-color: #c8e6c9;
+        }
+
+        .compartment-header .header-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-icon {
+            font-size: 0.8em;
+            transition: transform 0.2s ease;
+        }
+
+        .compartment-body {
+            margin-top: 10px;
+            display: block;
+        }
+
+        .compartment-body.collapsed {
+            display: none;
         }
 
         .row-tray {
@@ -185,13 +201,14 @@
             align-items: center;
         }
 
-        .btn-edit-tray, .btn-move-tray, .btn-move-single, .btn-edit-single {
+        .btn-edit-tray {
             background-color: #0288d1;
             color: white;
             padding: 2px 6px;
             font-size: 0.75em;
             width: auto;
             border-radius: 3px;
+            margin-left: 4px;
             cursor: pointer;
         }
 
@@ -210,12 +227,10 @@
 
         th { background-color: #f0f0f0; }
 
-        .btn-danger {
-            background-color: #d32f2f;
-            padding: 2px 5px;
-            font-size: 0.75em;
-            width: auto;
-            border-radius: 3px;
+        .row-warning {
+            background-color: #ffebee !important;
+            color: #c62828;
+            font-weight: bold;
         }
 
         .search-result {
@@ -230,26 +245,8 @@
             border-color: #ffcdd2;
         }
 
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 999;
-            left: 0; top: 0;
-            width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            width: 340px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-
         .sync-status {
-            font-size: 0.8em;
+            font-size: 0.85em;
             margin-top: 5px;
             color: #ffffff;
             font-style: italic;
@@ -260,16 +257,16 @@
 
     <div class="header">
         <a href="index.html" class="btn-back-menu">⬅ TRỞ VỀ MENU</a>
-        <h1>HỆ THỐNG PHẦN MỀM QUẢN LÝ KHO SẠCH (36-TTB26)</h1>
-        <div id="syncStatus" class="sync-status">🟢 Đang kết nối Firestore Realtime...</div>
+        <h1>HỆ THỐNG QUẢN LÝ KHO SẠCH (36-TTB26) - NHẬP & SỬA KHO</h1>
+        <div id="syncStatus" class="sync-status">🟢 Đang kết nối Supabase...</div>
     </div>
 
     <div class="container">
         <div class="main-content">
-            <!-- Form Quét Nhanh (Chỉ thêm mã, thông tin trống) -->
+            <!-- Form Quét / Nhập Kho Sạch -->
             <div class="card">
-                <h3>Thêm Nhanh Túi Máu Vào Ngăn (Quét liên tục)</h3>
-                <form id="quickAddForm" style="display: grid; grid-template-columns: 1fr 1fr 2fr 150px; gap: 10px; align-items: end;">
+                <h3>Quét / Nhập Túi Máu Kho Sạch</h3>
+                <form id="addBloodForm" style="display: grid; grid-template-columns: 1fr 1fr 1.5fr 2fr 100px; gap: 8px; align-items: end;">
                     <div class="form-group">
                         <label>Vị trí Ngăn</label>
                         <select id="selectNgan" required></select>
@@ -284,52 +281,45 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Quét Mã Barcode Túi Máu</label>
-                        <input type="text" id="barcodeTui" placeholder="Quét barcode..." autofocus required>
+                        <label>Barcode Khay</label>
+                        <input type="text" id="barcodeKhay" placeholder="Mã khay..." value="">
                     </div>
                     <div class="form-group">
-                        <button type="submit" style="height: 36px; background-color: #0288d1;">Thêm Nhanh</button>
+                        <label>Barcode Túi Máu</label>
+                        <input type="text" id="barcodeTui" placeholder="Quét/Nhập mã túi..." style="text-transform: uppercase;" required autofocus>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" style="height: 36px;">Nhập Kho</button>
                     </div>
                 </form>
             </div>
 
-            <!-- Form Xuất Kho Nhanh Bằng Barcode -->
-            <div class="card" style="border-left: 5px solid #d32f2f;">
-                <h3 style="color: #d32f2f; border-bottom-color: #d32f2f;">Xuất Nhanh Túi Máu Khỏi Kho</h3>
-                <form id="quickCheckoutForm" style="display: grid; grid-template-columns: 3fr 140px; gap: 10px; align-items: end;">
-                    <div class="form-group">
-                        <label>Quét Mã Barcode Túi Máu Cần Xuất</label>
-                        <input type="text" id="barcodeCheckout" placeholder="Quét barcode để xuất kho..." required>
-                    </div>
-                    <div class="form-group">
-                        <button type="submit" style="height: 36px; background-color: #d32f2f;">Xác Nhận Xuất</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Danh sách các ngăn từ 1 đến 6 -->
-            <div class="card">
-                <div class="column-container" id="nganContainer">
-                    <div class="column-title">DANH SÁCH NGĂN (1 - 6)</div>
-                </div>
+            <!-- Khung hiển thị ngăn 1 đến 6 dạng 1 cột dọc -->
+            <div class="column-container" id="columnContainer">
+                <div class="column-title">DANH SÁCH NGĂN (NGĂN 1 - 6)</div>
             </div>
         </div>
 
         <div class="sidebar">
             <div class="card">
-                <h3>Quản Lý Dữ Liệu Kho Sạch</h3>
-                <button class="btn-sync-sheets" onclick="syncAllItemsFromSheets()">🔄 Lấy Dữ Liệu Túi Máu</button>
-                <button class="btn-info" style="background-color: #d32f2f; margin-bottom: 8px;" onclick="checkoutAllCabinet()">🚀 Xuất kho tất cả túi trong tủ</button>
-                <button class="btn-success" onclick="exportToExcel()">📊 Nhập Kho Sạch</button>
-                <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="importFromExcel(event)">
-                <button class="btn-info" onclick="document.getElementById('excelFileInput').click()">📥 Nhập File Excel</button>
-                <button class="btn-clear-all" onclick="clearAllData()">🗑 Xóa Tất Cả Dữ Liệu</button>
+                <h3>Thao Tác File & Hiển Thị</h3>
+                <!-- Nút Xuất File Excel -->
+                <button class="btn-success" onclick="exportToExcel()">📊 Xuất File Excel</button>
+                
+                <!-- Nút Xuất Tất Cả Các Túi Máu -->
+                <button class="btn-danger" onclick="checkoutAllInventory()">🚀 Xuất Tất Cả Túi Máu</button>
+                
+                <!-- Nút điều khiển Thu gọn / Mở rộng tất cả -->
+                <div style="display: flex; gap: 8px; margin-top: 10px;">
+                    <button style="background-color: #607d8b; font-size: 0.85em; padding: 6px;" onclick="toggleAllCompartments(true)">📂 Thu gọn tất cả</button>
+                    <button style="background-color: #00897b; font-size: 0.85em; padding: 6px;" onclick="toggleAllCompartments(false)">📂 Mở tất cả</button>
+                </div>
             </div>
 
             <div class="card">
-                <h3>Tìm Kiếm Túi Máu</h3>
+                <h3>Tìm Kiếm & Sửa Nhanh</h3>
                 <div class="form-group">
-                    <input type="text" id="searchInput" placeholder="Nhập Barcode túi máu..." onkeyup="if(event.key === 'Enter') searchBloodBag()">
+                    <input type="text" id="searchInput" placeholder="Nhập Barcode túi máu..." style="text-transform: uppercase;" onkeyup="if(event.key === 'Enter') searchBloodBag()">
                 </div>
                 <button onclick="searchBloodBag()">Tìm Kiếm</button>
                 <div id="searchResult"></div>
@@ -353,102 +343,40 @@
         </div>
     </div>
 
-    <!-- Modal chọn nơi chuyển -->
-    <div id="moveModal" class="modal">
-        <div class="modal-content">
-            <h3 style="margin-top:0;" id="modalTitle">Chuyển Vị Trí</h3>
-            <div class="form-group">
-                <label>Chọn Ngăn Đích:</label>
-                <select id="modalToNgan"></select>
-            </div>
-            <div class="form-group">
-                <label>Chọn Hàng Đích:</label>
-                <select id="modalToHang">
-                    <option value="1">Hàng 1</option>
-                    <option value="2">Hàng 2</option>
-                    <option value="3">Hàng 3</option>
-                    <option value="4">Hàng 4</option>
-                </select>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button id="modalConfirmBtn" style="background-color: #2e7d32;">Xác Nhận Chuyển</button>
-                <button onclick="closeModal()" style="background-color: #757575;">Hủy</button>
-            </div>
-        </div>
-    </div>
+    <!-- Script xử lý logic Supabase -->
+    <script>
+        const SUPABASE_URL = 'https://hbebizzldisahoonbrtn.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_Ob78HELQ_uFN2VvIRjPWig_2ZfUpYGL';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    <!-- Modal Sửa Thông Tin -->
-    <div id="editItemModal" class="modal">
-        <div class="modal-content">
-            <h3 style="margin-top:0;">Sửa Thông Tin Túi Máu</h3>
-            <div class="form-group">
-                <label>Barcode Túi Máu:</label>
-                <input type="text" id="editBarcodeTui" required>
-            </div>
-            <div class="form-group">
-                <label>Nhóm Máu:</label>
-                <select id="editNhomMau">
-                    <option value="">-- Chưa có --</option>
-                    <option value="O">O</option>
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="AB">AB</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Rh:</label>
-                <select id="editRhFactor">
-                    <option value="">-- Chưa có --</option>
-                    <option value="Rh+">Rh(+)</option>
-                    <option value="Rh-">Rh(-)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Thể Tích:</label>
-                <select id="editDungTich">
-                    <option value="">-- Chưa có --</option>
-                    <option value="250">250 ml</option>
-                    <option value="350">350 ml</option>
-                    <option value="450">450 ml</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Hạn Sử Dụng:</label>
-                <input type="date" id="editHanSuDung">
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button id="saveEditItemBtn" style="background-color: #0288d1;">Lưu Thay Đổi</button>
-                <button onclick="closeEditModal()" style="background-color: #757575;">Hủy</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Nhúng Firebase SDK v10 (Modular) với cấu hình đã cung cấp -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBQQgEMErGty3OE0rFJPe-_XlNf3oW5kOA",
-            authDomain: "kho-sach-ec481.firebaseapp.com",
-            projectId: "kho-sach-ec481",
-            storageBucket: "kho-sach-ec481.firebasestorage.app",
-            messagingSenderId: "806528329299",
-            appId: "1:806528329299:web:3a5ac5b49dd990c40008a6",
-            measurementId: "G-738WXNLHMP"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const docRef = doc(db, "kho_sach", "data_36_ttb26");
-
-        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxRknwT4MZKMzrs3BWD1aCsH9Gj78sxvAHTpjg_7paBvxhd9sDrs2pEVlvlPqusK3hiyw/exec";
-        const TU_ID = "36-TTB26";
-
+        const TU_LUU_TRU_ID = '36-TTB26';
         const totalNgan = 6;
         const totalRows = 4;
         let inventory = {};
-        let isRemoteUpdate = false; 
+
+        // Mặc định tất cả các ngăn đều ở trạng thái thu gọn (true)
+        let collapsedState = {};
+        for (let i = 1; i <= totalNgan; i++) {
+            collapsedState[i] = true;
+        }
+
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return 'Trống';
+            const parts = dateStr.split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return dateStr;
+        }
+
+        function isExpiringSoon(hanSuDungStr) {
+            if (!hanSuDungStr) return false;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const expDate = new Date(hanSuDungStr);
+            expDate.setHours(0, 0, 0, 0);
+            const diffTime = expDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays >= 0 && diffDays <= 20;
+        }
 
         function initInventory() {
             let temp = {};
@@ -467,18 +395,14 @@
         inventory = initInventory();
 
         const selectNgan = document.getElementById('selectNgan');
-        const modalToNgan = document.getElementById('modalToNgan');
-
         function populateNganSelects() {
-            [selectNgan, modalToNgan].forEach(select => {
-                select.innerHTML = '';
-                for (let i = 1; i <= totalNgan; i++) {
-                    const opt = document.createElement('option');
-                    opt.value = i;
-                    opt.textContent = `NGĂN ${i}`;
-                    select.appendChild(opt);
-                }
-            });
+            selectNgan.innerHTML = '';
+            for (let i = 1; i <= totalNgan; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `NGĂN ${i}`;
+                selectNgan.appendChild(opt);
+            }
         }
         populateNganSelects();
 
@@ -490,180 +414,317 @@
             }
         }
 
-        function formatDateToDisplay(dateString) {
-            if (!dateString) return '';
-            const parts = dateString.split('-');
-            if (parts.length === 3) {
-                if (parts[0].length === 4) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-                return `${parts[0]}/${parts[1]}/${parts[2]}`;
-            }
-            return dateString;
-        }
+        // Tải dữ liệu kho sạch (chỉ lấy các túi có status = 'khosach')
+        async function loadDataFromSupabase() {
+            updateSyncStatus('🟡 Đang tải dữ liệu từ Supabase...');
+            const { data, error } = await _supabase
+                .from('blood_units')
+                .select('*')
+                .eq('tu_luu_tru', TU_LUU_TRU_ID)
+                .eq('status', 'khosach');
 
-        async function fetchBloodInfoFromSheet(barcode) {
-            try {
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=getBloodInfo&barcode=${encodeURIComponent(barcode)}`);
-                const result = await response.json();
-                if (result.status === "success" && result.data) {
-                    return result.data;
+            if (error) {
+                console.error("Lỗi tải Supabase:", error);
+                updateSyncStatus('🔴 Lỗi kết nối Supabase', true);
+                return;
+            }
+
+            inventory = initInventory();
+
+            data.forEach(row => {
+                const nganMatch = String(row.ngan || "").match(/\d+/);
+                const hangMatch = String(row.hang_khay || "").match(/\d+/);
+
+                if (nganMatch && hangMatch) {
+                    const nganId = parseInt(nganMatch[0], 10);
+                    const hangId = parseInt(hangMatch[0], 10);
+
+                    if (inventory[nganId] && inventory[nganId].rows[hangId]) {
+                        inventory[nganId].rows[hangId].barcodeKhay = row.barcode_khay || 'Trống';
+                        inventory[nganId].rows[hangId].items.push({
+                            id: row.id,
+                            barcode: (row.barcode_tui_mau || '').toUpperCase(),
+                            nhom: row.nhom_mau || 'Trống',
+                            rh: row.yeu_to_rh || 'Trống',
+                            dungTich: row.dung_tich || 'Trống',
+                            ngayNhap: row.ngay_nhap || '',
+                            hanSuDung: row.han_su_dung || ''
+                        });
+                    }
                 }
-            } catch (err) {
-                console.error("Lỗi kết nối lấy thông tin từ Google Sheets:", err);
-            }
-            return null;
+            });
+
+            renderView();
+            updateSyncStatus('🟢 Đã đồng bộ với Supabase');
         }
 
-        async function logCheckoutToGoogleSheet(item) {
-            if (!APPS_SCRIPT_URL) return;
-            try {
-                await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: "checkout",
-                        tuId: TU_ID,
-                        barcode: item.barcode,
-                        nhom: item.nhom,
-                        rh: item.rh,
-                        dungTich: item.dungTich,
-                        hanSuDung: item.hanSuDung
+        const realtimeChannel = _supabase
+            .channel('public:blood_units_36_ttb26_khosach')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'blood_units' }, (payload) => {
+                loadDataFromSupabase();
+            })
+            .subscribe();
+
+        // Xử lý quét/nhập túi máu -> Tự động CHUYỂN THÀNH IN HOA & status='khosach'
+        document.getElementById('addBloodForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const nganId = document.getElementById('selectNgan').value;
+            const hangId = document.getElementById('selectHang').value;
+            const barcodeKhay = document.getElementById('barcodeKhay').value.trim();
+            
+            // Ép buộc Barcode Túi Máu luôn VIẾT IN HOA
+            const barcodeTui = document.getElementById('barcodeTui').value.trim().toUpperCase();
+            
+            if (!barcodeTui) return;
+
+            const today = new Date().toISOString().split('T')[0];
+
+            updateSyncStatus('🟡 Đang lưu vào Supabase...');
+
+            const { data: existingData, error: fetchError } = await _supabase
+                .from('blood_units')
+                .select('*')
+                .eq('barcode_tui_mau', barcodeTui)
+                .maybeSingle();
+
+            if (fetchError) {
+                alert('Lỗi kiểm tra dữ liệu: ' + fetchError.message);
+                updateSyncStatus('🔴 Lỗi kết nối', true);
+                return;
+            }
+
+            let error;
+            if (existingData) {
+                const { error: updateError } = await _supabase
+                    .from('blood_units')
+                    .update({
+                        tu_luu_tru: TU_LUU_TRU_ID,
+                        ngan: `NGĂN ${nganId}`,
+                        hang_khay: `HÀNG ${hangId}`,
+                        barcode_khay: barcodeKhay || 'Trống',
+                        ngay_nhap: today,
+                        status: 'khosach'
                     })
-                });
-            } catch (err) {
-                console.error("Lỗi gửi log xuất kho lên Google Sheet:", err);
-            }
-        }
-
-        onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const cloudData = docSnap.data().inventory;
-                if (cloudData) {
-                    isRemoteUpdate = true;
-                    inventory = cloudData;
-                    renderView(false); 
-                    updateSyncStatus('🟢 Đã đồng bộ Realtime Firestore');
-                }
+                    .eq('barcode_tui_mau', barcodeTui);
+                error = updateError;
             } else {
-                saveToCloud();
+                const { error: insertError } = await _supabase
+                    .from('blood_units')
+                    .insert([
+                        {
+                            tu_luu_tru: TU_LUU_TRU_ID,
+                            ngan: `NGĂN ${nganId}`,
+                            hang_khay: `HÀNG ${hangId}`,
+                            barcode_khay: barcodeKhay || 'Trống',
+                            barcode_tui_mau: barcodeTui,
+                            ngay_nhap: today,
+                            status: 'khosach'
+                        }
+                    ]);
+                error = insertError;
             }
-        }, (error) => {
-            console.error("Lỗi Firestore Realtime:", error);
-            updateSyncStatus('🔴 Lỗi kết nối Realtime Firestore', true);
+
+            if (error) {
+                alert('Lỗi khi lưu vào Supabase: ' + error.message);
+                updateSyncStatus('🔴 Lỗi lưu dữ liệu', true);
+                return;
+            }
+
+            document.getElementById('barcodeTui').value = '';
+            document.getElementById('barcodeTui').focus();
+            loadDataFromSupabase();
         });
 
-        async function saveToCloud() {
-            if (isRemoteUpdate) {
-                isRemoteUpdate = false;
-                return; 
-            }
-            try {
-                updateSyncStatus('🟡 Đang lưu lên Firestore...');
-                await setDoc(docRef, { inventory: inventory });
-                updateSyncStatus('🟢 Đã đồng bộ Realtime Firestore');
-            } catch (err) {
-                console.error("Lỗi lưu Cloud:", err);
-                updateSyncStatus('🔴 Lỗi ghi dữ liệu Firestore', true);
+        window.editSingleItemBarcode = async function(nganId, hangId, index) {
+            const item = inventory[nganId].rows[hangId].items[index];
+            const newBarcode = prompt(`Nhập lại mã Barcode mới cho túi máu (Mã hiện tại: ${item.barcode}):`, item.barcode);
+            
+            if (newBarcode !== null) {
+                const trimmedBarcode = newBarcode.trim().toUpperCase();
+                if (!trimmedBarcode) {
+                    alert("Mã barcode không được để trống!");
+                    return;
+                }
+
+                if (trimmedBarcode === item.barcode) return;
+
+                updateSyncStatus('🟡 Đang cập nhật mã barcode...');
+
+                if (item.id) {
+                    const { error } = await _supabase
+                        .from('blood_units')
+                        .update({ barcode_tui_mau: trimmedBarcode })
+                        .eq('id', item.id);
+
+                    if (error) {
+                        alert('Lỗi khi cập nhật barcode: ' + error.message);
+                        updateSyncStatus('🔴 Lỗi cập nhật', true);
+                        return;
+                    }
+                }
+
+                loadDataFromSupabase();
+                alert(`✅ Đã cập nhật mã barcode thành công thành: ${trimmedBarcode}`);
             }
         }
 
-        window.editBarcodeKhay = function(nganId, hangId) {
+        window.deleteSingleItem = async function(nganId, hangId, index) {
+            const item = inventory[nganId].rows[hangId].items[index];
+            if (confirm(`⚠️ XÁC NHẬN XÓA: Xóa túi máu [${item.barcode}] khỏi hệ thống?`)) {
+                if (item.id) {
+                    const { error } = await _supabase.from('blood_units').delete().eq('id', item.id);
+                    if (error) {
+                        alert('Lỗi khi xóa: ' + error.message);
+                        return;
+                    }
+                }
+                loadDataFromSupabase();
+                alert(`🗑️ Đã xóa túi máu ${item.barcode} thành công!`);
+            }
+        }
+
+        // Cập nhật trạng thái xuất kho: status = 'xuatkho'
+        async function checkoutItemAndLog(item) {
+            await _supabase.from('checkout_logs').insert([{
+                tu_luu_tru: TU_LUU_TRU_ID,
+                barcode_tui_mau: item.barcode,
+                nhom_mau: item.nhom,
+                yeu_to_rh: item.rh,
+                dung_tich: item.dungTich,
+                han_su_dung: item.hanSuDung
+            }]);
+
+            if (item.id) {
+                await _supabase.from('blood_units').update({ status: 'xuatkho' }).eq('id', item.id);
+            }
+        }
+
+        window.checkoutRow = async function(nganId, hangId) {
+            const rowData = inventory[nganId]?.rows[hangId];
+            if (!rowData || rowData.items.length === 0) {
+                alert("Hàng khay này đang trống!");
+                return;
+            }
+
+            if (confirm(`Xác nhận xuất toàn bộ ${rowData.items.length} túi ở Ngăn ${nganId} - Hàng ${hangId}?`)) {
+                updateSyncStatus('🟡 Đang xử lý xuất kho...');
+                for (let item of rowData.items) {
+                    await checkoutItemAndLog(item);
+                }
+                loadDataFromSupabase();
+                alert(`✅ Đã xuất toàn bộ hàng khay thành công!`);
+            }
+        }
+
+        window.checkoutCompartment = async function(nganId) {
+            let totalItems = 0;
+            for (let r = 1; r <= totalRows; r++) {
+                totalItems += inventory[nganId].rows[r].items.length;
+            }
+
+            if (totalItems === 0) {
+                alert(`Ngăn ${nganId} đang trống!`);
+                return;
+            }
+
+            if (confirm(`Xác nhận xuất toàn bộ ${totalItems} túi máu ở NGĂN ${nganId}?`)) {
+                updateSyncStatus('🟡 Đang xử lý xuất kho...');
+                for (let r = 1; r <= totalRows; r++) {
+                    const items = inventory[nganId].rows[r].items;
+                    for (let item of items) {
+                        await checkoutItemAndLog(item);
+                    }
+                }
+                loadDataFromSupabase();
+                alert(`✅ Đã xuất toàn bộ NGĂN ${nganId} thành công!`);
+            }
+        }
+
+        // Xuất toàn bộ tất cả các túi máu hiện có trong toàn bộ tủ lưu trữ
+        window.checkoutAllInventory = async function() {
+            let totalItemsAll = 0;
+            for (let n = 1; n <= totalNgan; n++) {
+                for (let r = 1; r <= totalRows; r++) {
+                    totalItemsAll += inventory[n].rows[r].items.length;
+                }
+            }
+
+            if (totalItemsAll === 0) {
+                alert("Kho sạch hiện tại đang trống, không có túi máu để xuất!");
+                return;
+            }
+
+            if (confirm(`⚠️ XÁC NHẬN: Bạn có chắc chắn muốn xuất TOÀN BỘ ${totalItemsAll} túi máu trong tất cả các ngăn ra khỏi kho sạch?`)) {
+                updateSyncStatus('🟡 Đang xử lý xuất toàn bộ kho...');
+                for (let n = 1; n <= totalNgan; n++) {
+                    for (let r = 1; r <= totalRows; r++) {
+                        const items = inventory[n].rows[r].items;
+                        for (let item of items) {
+                            await checkoutItemAndLog(item);
+                        }
+                    }
+                }
+                loadDataFromSupabase();
+                alert(`✅ Đã xuất toàn bộ ${totalItemsAll} túi máu khỏi kho sạch thành công!`);
+            }
+        }
+
+        window.editBarcodeKhay = async function(nganId, hangId) {
             const currentBarcode = inventory[nganId].rows[hangId].barcodeKhay || '';
-            const newBarcode = prompt(`Nhập mã Barcode khay mới cho Ngăn ${nganId} - Hàng ${hangId}:`, currentBarcode);
+            const newBarcode = prompt(`Nhập mã Barcode khay mới cho Ngăn ${nganId} - Hàng ${hangId}:`, currentBarcode === 'Trống' ? '' : currentBarcode);
+            
             if (newBarcode !== null) {
-                inventory[nganId].rows[hangId].barcodeKhay = newBarcode.trim();
+                const trimmedBarcode = newBarcode.trim() || 'Trống';
+                inventory[nganId].rows[hangId].barcodeKhay = trimmedBarcode;
+                
+                const itemsInRow = inventory[nganId].rows[hangId].items;
+                for (let item of itemsInRow) {
+                    await _supabase
+                        .from('blood_units')
+                        .update({ barcode_khay: trimmedBarcode })
+                        .eq('id', item.id);
+                }
                 renderView();
             }
         }
 
-        let currentMoveType = null, currentSrcNgan = null, currentSrcHang = null, currentSrcIndex = null;
-
-        window.openMoveRowModal = function(nganId, hangId) {
-            currentMoveType = 'ROW'; currentSrcNgan = nganId; currentSrcHang = hangId;
-            document.getElementById('modalTitle').textContent = `Chuyển Hàng Khay (Ngăn ${nganId} - Hàng ${hangId})`;
-            document.getElementById('moveModal').style.display = 'flex';
-        }
-
-        window.openMoveItemModal = function(nganId, hangId, index) {
-            currentMoveType = 'ITEM'; currentSrcNgan = nganId; currentSrcHang = hangId; currentSrcIndex = index;
-            document.getElementById('modalTitle').textContent = `Chuyển Túi Máu (Ngăn ${nganId} - Hàng ${hangId})`;
-            document.getElementById('moveModal').style.display = 'flex';
-        }
-
-        window.closeModal = function() { document.getElementById('moveModal').style.display = 'none'; }
-
-        document.getElementById('modalConfirmBtn').addEventListener('click', function() {
-            const destNgan = document.getElementById('modalToNgan').value;
-            const destHang = document.getElementById('modalToHang').value;
-
-            if (currentSrcNgan == destNgan && currentSrcHang == destHang) {
-                alert('Vị trí đích trùng với vị trí nguồn!');
-                return;
-            }
-
-            if (currentMoveType === 'ROW') {
-                const srcRowData = inventory[currentSrcNgan].rows[currentSrcHang];
-                inventory[destNgan].rows[destHang] = { barcodeKhay: srcRowData.barcodeKhay, items: [...srcRowData.items] };
-                inventory[currentSrcNgan].rows[currentSrcHang] = { barcodeKhay: '', items: [] };
-            } else if (currentMoveType === 'ITEM') {
-                const itemToMove = inventory[currentSrcNgan].rows[currentSrcHang].items.splice(currentSrcIndex, 1)[0];
-                inventory[destNgan].rows[destHang].items.push(itemToMove);
-            }
-
-            closeModal();
+        // Thu gọn / Mở rộng ngăn
+        window.toggleCompartment = function(nganId) {
+            collapsedState[nganId] = !collapsedState[nganId];
             renderView();
-        });
-
-        let editTargetNgan = null, editTargetHang = null, editTargetIndex = null;
-        window.openEditItemModal = function(nganId, hangId, index) {
-            editTargetNgan = nganId; editTargetHang = hangId; editTargetIndex = index;
-            const item = inventory[nganId].rows[hangId].items[index];
-            document.getElementById('editBarcodeTui').value = item.barcode;
-            document.getElementById('editNhomMau').value = item.nhom || '';
-            document.getElementById('editRhFactor').value = item.rh || '';
-            document.getElementById('editDungTich').value = item.dungTich || '';
-            document.getElementById('editHanSuDung').value = item.hanSuDung || '';
-            document.getElementById('editItemModal').style.display = 'flex';
         }
 
-        window.closeEditModal = function() { document.getElementById('editItemModal').style.display = 'none'; }
-
-        document.getElementById('saveEditItemBtn').addEventListener('click', function() {
-            const newBarcodeActual = document.getElementById('editBarcodeTui').value.trim();
-            if (!newBarcodeActual) { alert('Barcode không được để trống!'); return; }
-            const currentItem = inventory[editTargetNgan].rows[editTargetHang].items[editTargetIndex];
-            currentItem.barcode = newBarcodeActual;
-            currentItem.nhom = document.getElementById('editNhomMau').value;
-            currentItem.rh = document.getElementById('editRhFactor').value;
-            currentItem.dungTich = document.getElementById('editDungTich').value;
-            currentItem.hanSuDung = document.getElementById('editHanSuDung').value;
-            closeEditModal();
+        window.toggleAllCompartments = function(isCollapse) {
+            for (let i = 1; i <= totalNgan; i++) {
+                collapsedState[i] = isCollapse;
+            }
             renderView();
-        });
+        }
 
         function createCompartmentBox(i) {
-            const ngan = inventory[i];
+            const ngan = inventory[i] || { rows: { 1: { barcodeKhay: 'Trống', items: [] }, 2: { barcodeKhay: 'Trống', items: [] }, 3: { barcodeKhay: 'Trống', items: [] }, 4: { barcodeKhay: 'Trống', items: [] } } };
             let totalItemsInNgan = 0;
             let rowsContentHtml = '';
 
             for (let r = 1; r <= totalRows; r++) {
-                const rowData = ngan.rows[r];
-                if (!rowData) continue;
+                const rowData = ngan.rows[r] || { barcodeKhay: 'Trống', items: [] };
                 totalItemsInNgan += rowData.items.length;
 
                 let itemsHtml = '';
                 rowData.items.forEach((item, index) => {
+                    const isWarning = isExpiringSoon(item.hanSuDung);
+                    const rowClass = isWarning ? 'row-warning' : '';
+
                     itemsHtml += `
-                        <tr>
+                        <tr class="${rowClass}">
                             <td><b>${index + 1}</b></td>
-                            <td>${item.barcode}</td>
-                            <td>${item.nhom ? item.nhom + ' (' + (item.rh || '') + ')' : '<span style="color:#999">Chưa có</span>'}</td>
-                            <td>${item.dungTich ? item.dungTich + 'ml' : '<span style="color:#999">Chưa có</span>'}</td>
-                            <td>${item.hanSuDung ? formatDateToDisplay(item.hanSuDung) : '<span style="color:#999">Chưa có</span>'}</td>
+                            <td>${item.barcode} ${isWarning ? '⚠️ (Sắp hết hạn)' : ''}</td>
+                            <td>${item.nhom} ${item.rh !== 'Trống' ? '(' + item.rh + ')' : ''}</td>
+                            <td>${item.dungTich === 'Trống' ? 'Trống' : item.dungTich + 'ml'}</td>
+                            <td>${item.hanSuDung ? formatDateDisplay(item.hanSuDung) : 'Trống'}</td>
                             <td>
-                                <button class="btn-edit-single" onclick="openEditItemModal(${i}, ${r}, ${index})">✏️</button>
-                                <button class="btn-move-single" onclick="openMoveItemModal(${i}, ${r}, ${index})">🔄</button>
-                                <button class="btn-danger" onclick="removeItem(${i}, ${r}, ${index})">🗑</button>
+                                <button class="btn-edit-item" title="Sửa barcode túi này" onclick="editSingleItemBarcode(${i}, ${r}, ${index})">✏️ Sửa</button>
+                                <button class="btn-delete-item" title="Xóa túi này" onclick="deleteSingleItem(${i}, ${r}, ${index})">🗑 Xóa</button>
                             </td>
                         </tr>
                     `;
@@ -674,8 +735,8 @@
                         <div class="row-title">
                             <span>
                                 HÀNG KHAY ${r} (Mã: <b>${rowData.barcodeKhay || 'Trống'}</b>)
-                                <button class="btn-edit-tray" onclick="editBarcodeKhay(${i}, ${r})">✏ Khay</button>
-                                <button class="btn-move-tray" onclick="openMoveRowModal(${i}, ${r})">🔄 Chuyển</button>
+                                <button class="btn-edit-tray" onclick="editBarcodeKhay(${i}, ${r})">✏️ Sửa Khay</button>
+                                <button class="btn-warning" onclick="checkoutRow(${i}, ${r})">🚀 Xuất Hàng</button>
                             </span>
                             <span>SL: ${rowData.items.length}</span>
                         </div>
@@ -686,117 +747,110 @@
                                         <th style="width: 25px;">STT</th>
                                         <th>Barcode Túi</th>
                                         <th>Nhóm / Rh</th>
-                                        <th>Thể Tích</th>
+                                        <th>Dung Tích</th>
                                         <th>Hạn Sử Dụng</th>
-                                        <th style="width: 85px;">Thao Tác</th>
+                                        <th style="width: 100px;">Thao Tác</th>
                                     </tr>
                                 </thead>
-                                <tbody>${itemsHtml}</tbody>
+                                <tbody>
+                                    ${itemsHtml}
+                                </tbody>
                             </table>
                         ` : '<div style="font-size: 0.8em; color: #999; text-align: center; padding: 3px;">Hàng khay trống</div>'}
                     </div>
                 `;
             }
 
+            const isCollapsed = collapsedState[i];
+
             const box = document.createElement('div');
             box.className = 'compartment-box';
             box.innerHTML = `
-                <div class="compartment-header">
-                    <div>
+                <div class="compartment-header" onclick="toggleCompartment(${i})">
+                    <div class="header-info">
+                        <span class="toggle-icon">${isCollapsed ? '▶' : '▼'}</span>
                         <span>NGĂN ${i}</span>
-                        <button class="btn-checkout-ngan" onclick="checkoutCompartment(${i})">🚀 Xuất Kho Ngăn</button>
                     </div>
-                    <small>Tổng số: <b>${totalItemsInNgan}</b> túi</small>
+                    <div>
+                        <button class="btn-warning" onclick="event.stopPropagation(); checkoutCompartment(${i})">🚀 Xuất Ngăn</button>
+                        <small style="margin-left: 8px;">Tổng: <b>${totalItemsInNgan}</b> túi</small>
+                    </div>
                 </div>
-                ${rowsContentHtml}
+                <div class="compartment-body ${isCollapsed ? 'collapsed' : ''}">
+                    ${rowsContentHtml}
+                </div>
             `;
             return box;
         }
 
-        function renderView(shouldSyncCloud = true) {
-            const nganContainer = document.getElementById('nganContainer');
-            nganContainer.innerHTML = '<div class="column-title">DANH SÁCH NGĂN (1 - 6)</div>';
+        function renderView() {
+            const container = document.getElementById('columnContainer');
+            container.innerHTML = '<div class="column-title">DANH SÁCH NGĂN (NGĂN 1 - 6)</div>';
 
             for (let i = 1; i <= totalNgan; i++) {
-                const box = createCompartmentBox(i);
-                nganContainer.appendChild(box);
+                container.appendChild(createCompartmentBox(i));
             }
 
             updateStats();
-            if (shouldSyncCloud) saveToCloud();
         }
 
-        // THÊM NHANH TÚI MÁU (THÔNG TIN ĐỂ TRỐNG)
-        document.getElementById('quickAddForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const nganId = document.getElementById('selectNgan').value;
-            const hangId = document.getElementById('selectHang').value;
-            const barcodeTui = document.getElementById('barcodeTui').value.trim();
-            if (!barcodeTui) return;
+        // Xuất File Excel
+        window.exportToExcel = function() {
+            let exportData = [];
+            let sttTong = 1;
 
-            for (let n in inventory) {
-                for (let r in inventory[n].rows) {
-                    if (inventory[n].rows[r].items.some(item => item.barcode.toLowerCase() === barcodeTui.toLowerCase())) {
-                        alert('Barcode túi máu này đã tồn tại trong Kho Sạch!');
-                        document.getElementById('barcodeTui').value = '';
-                        return;
-                    }
+            for (let n = 1; n <= totalNgan; n++) {
+                for (let r = 1; r <= totalRows; r++) {
+                    const rowData = inventory[n]?.rows[r];
+                    if (!rowData) continue;
+                    rowData.items.forEach((item) => {
+                        exportData.push({
+                            "STT": sttTong++,
+                            "Tủ lưu trữ": TU_LUU_TRU_ID,
+                            "Ngăn": `NGĂN ${n}`,
+                            "Hàng Khay": `HÀNG ${r}`,
+                            "Barcode Khay": rowData.barcodeKhay || 'Trống',
+                            "Barcode Túi Máu": item.barcode,
+                            "Nhóm Máu": item.nhom,
+                            "Yếu Tố Rh": item.rh,
+                            "Dung Tích (ml)": item.dungTich,
+                            "Hạn Sử Dụng": item.hanSuDung ? formatDateDisplay(item.hanSuDung) : 'Trống'
+                        });
+                    });
                 }
             }
 
-            // Thêm mới với các thông tin để trống
-            inventory[nganId].rows[hangId].items.push({
-                barcode: barcodeTui,
-                nhom: '',
-                rh: '',
-                dungTich: '',
-                hanSuDung: ''
-            });
-
-            document.getElementById('barcodeTui').value = '';
-            renderView();
-            document.getElementById('barcodeTui').focus();
-        });
-
-        window.syncAllItemsFromSheets = async function() {
-            if (!confirm("Hệ thống sẽ quét lại toàn bộ các túi máu trong tủ để cập nhật thông tin từ Google Sheets. Bạn có muốn tiếp tục?")) return;
-
-            updateSyncStatus('⏳ Đang đồng bộ thông tin từ Google Sheets...');
-            let updatedCount = 0;
-
-            for (let n in inventory) {
-                for (let r in inventory[n].rows) {
-                    let items = inventory[n].rows[r].items;
-                    for (let i = 0; i < items.length; i++) {
-                        let sheetInfo = await fetchBloodInfoFromSheet(items[i].barcode);
-                        if (sheetInfo) {
-                            items[i].nhom = sheetInfo.nhomMau;
-                            items[i].rh = sheetInfo.rh;
-                            items[i].dungTich = sheetInfo.theTich;
-                            items[i].hanSuDung = sheetInfo.hanSuDung;
-                            updatedCount++;
-                        }
-                    }
-                }
+            if (exportData.length === 0) {
+                alert("Kho sạch hiện tại đang trống!");
+                return;
             }
 
-            renderView();
-            alert(`✅ Đã đồng bộ thành công thông tin cho ${updatedCount} túi máu từ Google Sheets!`);
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "KHO_SACH");
+            XLSX.writeFile(workbook, `KHO_SACH_${TU_LUU_TRU_ID}_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
-        document.getElementById('quickCheckoutForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const barcodeOut = document.getElementById('barcodeCheckout').value.trim().toLowerCase();
-            if (!barcodeOut) return;
+        // Tìm Kiếm Nhanh (chuyển truy vấn thành IN HOA)
+        window.searchBloodBag = function() {
+            const query = document.getElementById('searchInput').value.trim().toUpperCase();
+            const resultDiv = document.getElementById('searchResult');
+            
+            if (!query) {
+                resultDiv.innerHTML = '';
+                return;
+            }
 
-            let found = false;
-            let checkedOutItem = null;
+            let found = null, foundNgan = null, foundHang = null, foundIndex = null;
+
             for (let n in inventory) {
                 for (let r in inventory[n].rows) {
-                    const idx = inventory[n].rows[r].items.findIndex(item => item.barcode.toLowerCase() === barcodeOut);
+                    const idx = inventory[n].rows[r].items.findIndex(i => i.barcode.toUpperCase() === query);
                     if (idx !== -1) {
-                        checkedOutItem = inventory[n].rows[r].items.splice(idx, 1)[0];
-                        found = true;
+                        found = inventory[n].rows[r].items[idx];
+                        foundNgan = n;
+                        foundHang = r;
+                        foundIndex = idx;
                         break;
                     }
                 }
@@ -804,66 +858,42 @@
             }
 
             if (found) {
-                logCheckoutToGoogleSheet(checkedOutItem);
-                renderView();
-            } else {
-                alert(`❌ Không tìm thấy túi máu có mã "${barcodeOut}" trong kho!`);
-            }
-
-            document.getElementById('barcodeCheckout').value = '';
-            document.getElementById('barcodeCheckout').focus();
-        });
-
-        window.checkoutCompartment = function(nganId) {
-            let count = 0;
-            for (let r = 1; r <= totalRows; r++) {
-                const itemsInRow = inventory[nganId].rows[r].items;
-                count += itemsInRow.length;
-                itemsInRow.forEach(item => logCheckoutToGoogleSheet(item));
-                inventory[nganId].rows[r].items = [];
-            }
-            if (count === 0) { alert('Ngăn này đang trống!'); return; }
-            renderView();
-            alert(`✅ Đã xuất kho toàn bộ ${count} túi từ NGĂN ${nganId} và ghi log lên Google Sheets.`);
-        }
-
-        window.checkoutAllCabinet = function() {
-            if (!confirm('⚠️ Bạn có chắc chắn muốn xuất kho TOÀN BỘ tủ kho sạch?')) return;
-            for (let n in inventory) {
-                for (let r in inventory[n].rows) {
-                    inventory[n].rows[r].items.forEach(item => logCheckoutToGoogleSheet(item));
+                if (collapsedState[foundNgan]) {
+                    collapsedState[foundNgan] = false;
+                    renderView();
                 }
-            }
-            inventory = initInventory();
-            renderView();
-            alert('🚀 Đã xuất kho toàn bộ tủ và ghi log lên Google Sheets!');
-        }
 
-        window.removeItem = function(nganId, hangId, index) {
-            if (confirm('Xóa túi máu này khỏi kho?')) {
-                inventory[nganId].rows[hangId].items.splice(index, 1);
-                renderView();
-            }
-        }
-
-        window.clearAllData = function() {
-            if (confirm("⚠️ Xóa tất cả dữ liệu?")) {
-                inventory = initInventory();
-                renderView();
+                resultDiv.className = 'search-result';
+                resultDiv.innerHTML = `
+                    <strong>Tìm thấy túi máu!</strong><br>
+                    - Barcode: <b>${found.barcode}</b><br>
+                    - Vị trí: <b>NGĂN ${foundNgan} -> HÀNG ${foundHang}</b><br>
+                    - Nhóm máu: <b>${found.nhom} (${found.rh})</b><br>
+                    - Hạn sử dụng: <b>${found.hanSuDung ? formatDateDisplay(found.hanSuDung) : 'Trống'}</b><br>
+                    <div style="display: flex; gap: 5px; margin-top: 8px;">
+                        <button class="btn-edit-item" style="flex: 1; padding: 6px;" onclick="editSingleItemBarcode(${foundNgan}, ${foundHang}, ${foundIndex})">✏️ Sửa</button>
+                        <button class="btn-delete-item" style="flex: 1; padding: 6px;" onclick="deleteSingleItem(${foundNgan}, ${foundHang}, ${foundIndex})">🗑 Xóa</button>
+                    </div>
+                `;
+            } else {
+                resultDiv.className = 'search-result not-found';
+                resultDiv.innerHTML = '<strong>Không tìm thấy</strong> túi máu trong kho.';
             }
         }
 
         function updateStats() {
             const groupKeys = ['O Rh+', 'O Rh-', 'A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-'];
             const stats = {};
-            groupKeys.forEach(k => stats[k] = { 250: 0, 350: 0, 450: 0 });
+            groupKeys.forEach(key => { stats[key] = { 250: 0, 350: 0, 450: 0 }; });
 
             for (let n in inventory) {
+                if (!inventory[n]?.rows) continue;
                 for (let r in inventory[n].rows) {
                     inventory[n].rows[r].items.forEach(item => {
-                        if (!item.nhom || !item.dungTich) return; // Bỏ qua túi chưa đồng bộ thông tin
                         const key = `${item.nhom} ${item.rh || 'Rh+'}`;
-                        if (stats[key] && stats[key][item.dungTich] !== undefined) stats[key][item.dungTich]++;
+                        if (stats[key] && stats[key][item.dungTich] !== undefined) {
+                            stats[key][item.dungTich]++;
+                        }
                     });
                 }
             }
@@ -872,21 +902,25 @@
             statsBody.innerHTML = '';
             let grandTotal = 0;
 
-            groupKeys.forEach(g => {
-                const rowTotal = stats[g][250] + stats[g][350] + stats[g][450];
+            for (let groupKey of groupKeys) {
+                const t250 = stats[groupKey][250];
+                const t350 = stats[groupKey][350];
+                const t450 = stats[groupKey][450];
+                const rowTotal = t250 + t350 + t450;
                 grandTotal += rowTotal;
+
                 if (rowTotal > 0) {
                     statsBody.innerHTML += `
                         <tr>
-                            <td><b>${g}</b></td>
-                            <td>${stats[g][250]}</td>
-                            <td>${stats[g][350]}</td>
-                            <td>${stats[g][450]}</td>
+                            <td><b>${groupKey}</b></td>
+                            <td>${t250}</td>
+                            <td>${t350}</td>
+                            <td>${t450}</td>
                             <td><b>${rowTotal}</b></td>
                         </tr>
                     `;
                 }
-            });
+            }
 
             statsBody.innerHTML += `
                 <tr style="background-color: #e8f5e9; font-weight: bold;">
@@ -896,107 +930,7 @@
             `;
         }
 
-        window.exportToExcel = function() {
-            let exportData = [];
-            let sttTong = 1;
-            for (let n = 1; n <= totalNgan; n++) {
-                for (let r = 1; r <= totalRows; r++) {
-                    const rowData = inventory[n].rows[r];
-                    rowData.items.forEach(item => {
-                        exportData.push({
-                            "STT": sttTong++,
-                            "Ngăn": `NGĂN ${n}`,
-                            "Hàng Khay": `HÀNG ${r}`,
-                            "Barcode Khay": rowData.barcodeKhay || 'Trống',
-                            "Barcode Túi Máu": item.barcode,
-                            "Nhóm Máu": item.nhom || '',
-                            "Rh": item.rh || '',
-                            "Thể Tích (ml)": item.dungTich || '',
-                            "Hạn Sử Dụng": item.hanSuDung ? formatDateToDisplay(item.hanSuDung) : ''
-                        });
-                    });
-                }
-            }
-            if (exportData.length === 0) { alert("Kho trống!"); return; }
-            const worksheet = XLSX.utils.json_to_sheet(exportData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "KHO_SACH");
-            XLSX.writeFile(workbook, `KHO_SACH_${new Date().toISOString().slice(0,10)}.xlsx`);
-        }
-
-        window.importFromExcel = function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                    if (!jsonData || jsonData.length === 0) return alert("File rỗng!");
-
-                    inventory = initInventory();
-                    jsonData.forEach(row => {
-                        const nganMatch = String(row["Ngăn"] || "").match(/\d+/);
-                        const hangMatch = String(row["Hàng Khay"] || "").match(/\d+/);
-                        const barcodeTui = String(row["Barcode Túi Máu"] || "").trim();
-
-                        if (nganMatch && hangMatch && barcodeTui) {
-                            const nId = parseInt(nganMatch[0], 10);
-                            const hId = parseInt(hangMatch[0], 10);
-                            if (inventory[nId] && inventory[nId].rows[hId]) {
-                                inventory[nId].rows[hId].items.push({
-                                    barcode: barcodeTui,
-                                    nhom: String(row["Nhóm Máu"] || ""),
-                                    rh: String(row["Rh"] || ""),
-                                    dungTich: String(row["Thể Tích (ml)"] || ""),
-                                    hanSuDung: String(row["Hạn Sử Dụng"] || "")
-                                });
-                            }
-                        }
-                    });
-                    renderView();
-                    alert("Nhập Excel thành công!");
-                } catch (error) {
-                    alert("Lỗi đọc file Excel!");
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        window.searchBloodBag = function() {
-            const query = document.getElementById('searchInput').value.trim().toLowerCase();
-            const resultDiv = document.getElementById('searchResult');
-            if (!query) { resultDiv.innerHTML = ''; return; }
-
-            let found = null, foundNgan = null, foundHang = null;
-            for (let n in inventory) {
-                for (let r in inventory[n].rows) {
-                    const idx = inventory[n].rows[r].items.findIndex(i => i.barcode.toLowerCase() === query);
-                    if (idx !== -1) {
-                        found = inventory[n].rows[r].items[idx];
-                        foundNgan = n; foundHang = r;
-                        break;
-                    }
-                }
-                if (found) break;
-            }
-
-            if (found) {
-                resultDiv.className = 'search-result';
-                resultDiv.innerHTML = `
-                    <strong>Tìm thấy túi máu trong Kho Sạch!</strong><br>
-                    - Barcode: <b>${found.barcode}</b><br>
-                    - Vị trí: <b>NGĂN ${foundNgan} -> HÀNG ${foundHang}</b><br>
-                    - Nhóm máu: <b>${found.nhom ? found.nhom + ' (' + (found.rh || '') + ')' : 'Chưa có'}</b><br>
-                    - Thể tích: <b>${found.dungTich ? found.dungTich + ' ml' : 'Chưa có'}</b><br>
-                    - Hạn sử dụng: <b>${found.hanSuDung ? formatDateToDisplay(found.hanSuDung) : 'Chưa có'}</b>
-                `;
-            } else {
-                resultDiv.className = 'search-result not-found';
-                resultDiv.innerHTML = 'Không tìm thấy túi máu này trong kho sạch.';
-            }
-        }
+        loadDataFromSupabase();
     </script>
 </body>
 </html>
