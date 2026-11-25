@@ -58,6 +58,11 @@
             border-radius: 4px;
             font-size: 0.9rem;
             outline: none;
+            text-transform: uppercase;
+        }
+
+        #search-container input::placeholder {
+            text-transform: none;
         }
 
         #search-container input:focus {
@@ -485,6 +490,7 @@
 
         let searchTimeout = null;
         searchInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
             clearTimeout(searchTimeout);
             const query = this.value.trim();
             
