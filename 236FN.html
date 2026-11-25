@@ -108,7 +108,7 @@
             font-size: 0.9em;
         }
 
-        #barcodeTui, #editBarcodeTui {
+        #barcodeKhay, #barcodeTui, #editBarcodeTui, #searchInput {
             text-transform: uppercase;
         }
 
@@ -655,12 +655,12 @@
             })
             .subscribe();
 
-        // Thêm túi máu mới với trạng thái 'nhapkho' và tự động in hoa barcode túi
+        // Thêm túi máu mới với trạng thái 'nhapkho' và tự động in hoa barcode khay, barcode túi
         document.getElementById('addBloodForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const nganId = document.getElementById('selectNgan').value;
             const hangId = document.getElementById('selectHang').value;
-            const barcodeKhay = document.getElementById('barcodeKhay').value;
+            const barcodeKhay = document.getElementById('barcodeKhay').value.trim().toUpperCase();
             const barcodeTui = document.getElementById('barcodeTui').value.trim().toUpperCase();
             const nhomMau = document.getElementById('nhomMau').value;
             const rhFactor = document.getElementById('rhFactor').value;
@@ -706,7 +706,7 @@
             const newBarcode = prompt(`Nhập mã Barcode khay mới cho Ngăn ${nganId} - Hàng ${hangId}:`, currentBarcode);
             
             if (newBarcode !== null) {
-                const trimmedBarcode = newBarcode.trim();
+                const trimmedBarcode = newBarcode.trim().toUpperCase();
                 inventory[nganId].rows[hangId].barcodeKhay = trimmedBarcode;
                 
                 const itemsInRow = inventory[nganId].rows[hangId].items;
@@ -1045,7 +1045,7 @@
         }
 
         window.searchBloodBag = function() {
-            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            const query = document.getElementById('searchInput').value.trim().toUpperCase();
             const resultDiv = document.getElementById('searchResult');
             
             if (!query) {
@@ -1057,7 +1057,7 @@
 
             for (let n in inventory) {
                 for (let r in inventory[n].rows) {
-                    const idx = inventory[n].rows[r].items.findIndex(i => i.barcode.toLowerCase() === query);
+                    const idx = inventory[n].rows[r].items.findIndex(i => i.barcode.toUpperCase() === query);
                     if (idx !== -1) {
                         found = inventory[n].rows[r].items[idx];
                         foundNgan = n;
@@ -1146,3 +1146,4 @@
     </script>
 </body>
 </html>
+```[cite: 1]
